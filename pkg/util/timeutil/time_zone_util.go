@@ -12,12 +12,21 @@ package timeutil
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const fixedOffsetPrefix string = "fixed offset:"
+const (
+	fixedOffsetPrefix = "fixed offset:"
+	// offsetBoundSecs is the maximum offset a timezone can have.
+	offsetBoundSecs = 167*60*60 + 59*60
+)
+
+// timezoneOffsetRegex is a regex for timezone offsets which appear in the form
+// `GMT±<offset>` or `UTC±<offset>`.
+var timezoneOffsetRegex = regexp.MustCompile(`(?i)^(GMT|UTC)([+-])(\d{1,3}(:\d{1,2}){0,2})$`)
 
 // FixedOffsetTimeZoneToLocation creates a time.Location with a set offset and
 // with a name that can be marshaled by crdb between nodes.
@@ -67,4 +76,45 @@ func ParseFixedOffsetTimeZone(location string) (offset int, origRepr string, suc
 		return 0, "", false
 	}
 	return offset, strings.TrimSuffix(strings.TrimPrefix(origRepr, "("), ")"), true
+}
+
+// TimeZoneOffsetStringConversion converts a time string to offset seconds.
+// Supported time zone strings: GMT/UTC±[00:00:00 - 169:59:00].
+// Seconds/minutes omittable and is case insensitive.
+func TimeZoneOffsetStringConversion(s string) (offset int64, ok bool) {
+	submatch := timezoneOffsetRegex.FindStringSubmatch(strings.ReplaceAll(s, " ", ""))
+	if len(submatch) == 0 {
+		return 0, false
+	}
+	prefix := string(submatch[0][3])
+	timeString := string(submatch[3])
+
+	var (
+		hoursString   = "0"
+		minutesString = "0"
+		secondsString = "0"
+	)
+	if strings.Contains(timeString, ":") {
+		offsets := strings.Split(timeString, ":")
+		hoursString, minutesString = offsets[0], offsets[1]
+		if len(offsets) == 3 {
+			secondsString = offsets[2]
+		}
+	} else {
+		hoursString = timeString
+	}
+
+	hours, _ := strconv.ParseInt(hoursString, 10, 64)
+	minutes, _ := strconv.ParseInt(minutesString, 10, 64)
+	seconds, _ := strconv.ParseInt(secondsString, 10, 64)
+	offset = (hours * 60 * 60) + (minutes * 60) + seconds
+
+	if prefix == "-" {
+		offset *= -1
+	}
+
+	if offset > offsetBoundSecs || offset < -offsetBoundSecs {
+		return 0, false
+	}
+	return offset, true
 }
