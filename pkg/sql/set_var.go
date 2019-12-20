@@ -12,7 +12,6 @@ package sql
 
 import (
 	"context"
-	"strconv"
 	"strings"
 	"time"
 
@@ -215,21 +214,11 @@ func timeZoneVarGetStringVal(
 	switch v := tree.UnwrapDatum(&evalCtx.EvalContext, d).(type) {
 	case *tree.DString:
 		location := string(*v)
-		loc, err = timeutil.LoadLocation(location)
-		if err != nil {
-			var err1 error
-			loc, err1 = timeutil.LoadLocation(strings.ToUpper(location))
-			if err1 != nil {
-				loc, err1 = timeutil.LoadLocation(strings.ToTitle(location))
-				if err1 != nil {
-					var ok bool
-					offset, ok = timeutil.TimeZoneOffsetStringConversion(location)
-					if !ok {
-						return "", wrapSetVarError("timezone", values[0].String(),
-							"cannot find time zone %q: %v", location, err)
-					}
-				}
-			}
+		var ok bool
+		loc, ok = timeutil.ParseStringAsTimeZone(location)
+		if !ok {
+			return "", wrapSetVarError("timezone", values[0].String(),
+				"cannot find time zone %q", location)
 		}
 
 	case *tree.DInterval:
@@ -267,15 +256,9 @@ func timeZoneVarGetStringVal(
 }
 
 func timeZoneVarSet(_ context.Context, m *sessionDataMutator, s string) error {
-	loc, err := timeutil.TimeZoneStringToLocation(s)
-	if err != nil {
-		// Maybe the string is coming from pgwire as a simple number.
-		intVal, err1 := strconv.ParseInt(s, 10, 64)
-		if err1 != nil {
-			// Ignore the int conversion, the original error is good enough.
-			return wrapSetVarError("TimeZone", s, "%v", err)
-		}
-		loc = timeutil.FixedOffsetTimeZoneToLocation(int(intVal)*60*60, s)
+	loc, ok := timeutil.ParseStringAsTimeZone(s)
+	if !ok {
+		return wrapSetVarError("TimeZone", "cannot find time zone %q", s)
 	}
 
 	m.SetLocation(loc)

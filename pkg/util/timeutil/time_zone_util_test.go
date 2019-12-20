@@ -10,7 +10,41 @@
 
 package timeutil
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestParseStringAsTimeZone(t *testing.T) {
+	aus, err := time.LoadLocation("Australia/Sydney")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		tz  string
+		loc *time.Location
+		ok  bool
+	}{
+		{"UTC", time.UTC, true},
+		{"Australia/Sydney", aus, true},
+		{"utcbob", nil, false},
+		{"+3", FixedOffsetTimeZoneToLocation(3*60*60, "+3"), true},
+		{"-3:00", FixedOffsetTimeZoneToLocation(-3*60*60, "-3"), true},
+		{"UTC+3", FixedOffsetTimeZoneToLocation(3*60*60, "UTC+3"), true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.tz, func(t *testing.T) {
+			loc, ok := ParseStringAsTimeZone(tc.tz)
+			assert.Equal(t, tc.ok, ok)
+			if tc.ok {
+				assert.Equal(t, tc.loc, loc)
+			}
+		})
+	}
+}
 
 func TestTimeZoneOffsetStringConversion(t *testing.T) {
 	testCases := []struct {
@@ -39,7 +73,7 @@ func TestTimeZoneOffsetStringConversion(t *testing.T) {
 	}
 
 	for i, testCase := range testCases {
-		offset, ok := TimeZoneOffsetStringConversion(testCase.timezone)
+		offset, ok := timeZoneOffsetStringConversion(testCase.timezone)
 		if offset != testCase.offsetSecs || ok != testCase.ok {
 			t.Errorf("%d: Expected offset: %d, success: %v for time %s, but got offset: %d, success: %v",
 				i, testCase.offsetSecs, testCase.ok, testCase.timezone, offset, ok)

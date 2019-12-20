@@ -2396,9 +2396,9 @@ may increase either contention or retry errors, or both.`,
 			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
 				ts := tree.MustBeDTimestamp(args[0])
 				tzStr := string(tree.MustBeDString(args[1]))
-				loc, err := timeutil.TimeZoneStringToLocation(tzStr)
-				if err != nil {
-					return nil, err
+				loc, ok := timeutil.ParseStringAsTimeZone(tzStr)
+				if !ok {
+					return nil, errors.Newf("could not find time zone %q", tzStr)
 				}
 				_, before := ts.Time.Zone()
 				_, after := ts.Time.In(loc).Zone()
@@ -2415,9 +2415,9 @@ may increase either contention or retry errors, or both.`,
 			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
 				ts := tree.MustBeDTimestampTZ(args[0])
 				tzStr := string(tree.MustBeDString(args[1]))
-				loc, err := timeutil.TimeZoneStringToLocation(tzStr)
-				if err != nil {
-					return nil, err
+				loc, ok := timeutil.ParseStringAsTimeZone(tzStr)
+				if !ok {
+					return nil, errors.Newf("could not find time zone %q", tzStr)
 				}
 				return ts.EvalAtTimeZone(ctx, loc), nil
 			},
