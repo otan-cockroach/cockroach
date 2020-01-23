@@ -292,8 +292,17 @@ func (tc *TableCollection) getTableVersion(
 		}
 	}
 
+	// Next, resolve the schema to the ID of the schema.
+	// TODO(sqlexec): consider caching this in TableCollection.
+	foundSchema, schemaID, err := resolveSchemaID(ctx, txn, dbID, tn.Schema())
+	if err != nil {
+		return nil, err
+	} else if !foundSchema {
+		return nil, errors.Newf("could not resolve schema %s under db %d", tn.Schema(), dbID)
+	}
+
 	readTimestamp := txn.ReadTimestamp()
-	table, expiration, err := tc.leaseMgr.AcquireByName(ctx, readTimestamp, dbID, tn.Table())
+	table, expiration, err := tc.leaseMgr.AcquireByName(ctx, readTimestamp, dbID, schemaID, tn.Table())
 	if err != nil {
 		// Read the descriptor from the store in the face of some specific errors
 		// because of a known limitation of AcquireByName. See the known
