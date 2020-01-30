@@ -250,9 +250,9 @@ func TestCopyRandom(t *testing.T) {
 			case time.Time:
 				var dt tree.NodeFormatter
 				if typs[i].Family() == types.TimeFamily {
-					dt = tree.MakeDTime(timeofday.FromTime(d))
+					dt = tree.MakeDTime(timeofday.FromTime(d, timeofday.RoundingAllow2400))
 				} else if typs[i].Family() == types.TimeTZFamily {
-					dt = tree.NewDTimeTZFromTime(d)
+					dt = tree.NewDTimeTZFromTime(d, timeofday.RoundingAllow2400)
 				} else {
 					dt = tree.MakeDTimestamp(d, time.Microsecond)
 				}

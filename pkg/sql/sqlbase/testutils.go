@@ -315,7 +315,7 @@ func RandDatumSimple(rng *rand.Rand, typ *types.T) tree.Datum {
 	case types.StringFamily:
 		datum = tree.NewDString(randStringSimple(rng))
 	case types.TimeFamily:
-		datum = tree.MakeDTime(timeofday.New(0, rng.Intn(simpleRange), 0, 0))
+		datum = tree.MakeDTime(timeofday.New(0, rng.Intn(simpleRange), 0, 0, timeofday.RoundingAllow2400))
 	case types.TimestampFamily:
 		datum = tree.MakeDTimestamp(time.Date(2000, 1, 1, rng.Intn(simpleRange), 0, 0, 0, time.UTC), time.Microsecond)
 	case types.TimestampTZFamily:

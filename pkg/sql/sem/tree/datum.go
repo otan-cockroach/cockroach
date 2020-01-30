@@ -1889,7 +1889,7 @@ func ParseDTime(ctx ParseTimeContext, s string, precision time.Duration) (*DTime
 		// Build our own error message to avoid exposing the dummy date.
 		return nil, makeParseError(s, types.Time, nil)
 	}
-	return MakeDTime(timeofday.FromTime(t).Round(precision)), nil
+	return MakeDTime(timeofday.FromTime(t, timeofday.RoundingDisallow2400).Round(precision)), nil
 }
 
 // ResolvedType implements the TypedExpr interface.
@@ -1983,8 +1983,8 @@ func NewDTimeTZ(t timetz.TimeTZ) *DTimeTZ {
 }
 
 // NewDTimeTZFromTime creates a DTimeTZ from time.Time.
-func NewDTimeTZFromTime(t time.Time) *DTimeTZ {
-	return &DTimeTZ{timetz.MakeTimeTZFromTime(t)}
+func NewDTimeTZFromTime(t time.Time, rounding timeofday.Rounding2400Spec) *DTimeTZ {
+	return &DTimeTZ{timetz.MakeTimeTZFromTime(t, rounding)}
 }
 
 // NewDTimeTZFromOffset creates a DTimeTZ from a TimeOfDay and offset.
