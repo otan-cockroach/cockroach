@@ -1649,14 +1649,14 @@ CockroachDB supports the following flags:
 		tree.Overload{
 			Types:      tree.ArgTypes{{"input", types.String}, {"format", types.String}},
 			ReturnType: tree.FixedReturnType(types.TimestampTZ),
-			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
 				toParse := string(tree.MustBeDString(args[0]))
 				format := string(tree.MustBeDString(args[1]))
 				t, err := strtime.Strptime(toParse, format)
 				if err != nil {
 					return nil, err
 				}
-				return tree.MakeDTimestampTZ(t.UTC(), time.Microsecond), nil
+				return tree.MakeDTimestampTZ(t.In(ctx.GetLocation()), time.Microsecond), nil
 			},
 			Info: "Returns `input` as a timestamptz using `format` (which uses standard " +
 				"`strptime` formatting).",
@@ -1709,7 +1709,7 @@ CockroachDB supports the following flags:
 			ReturnType:        tree.FixedReturnType(types.TimestampTZ),
 			PreferredOverload: true,
 			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
-				return tree.MakeDTimestampTZ(ctx.GetStmtTimestamp(), time.Microsecond), nil
+				return tree.MakeDTimestampTZ(ctx.GetStmtTimestamp().In(ctx.GetLocation()), time.Microsecond), nil
 			},
 			Info: "Returns the start time of the current statement.",
 		},
@@ -1717,7 +1717,7 @@ CockroachDB supports the following flags:
 			Types:      tree.ArgTypes{},
 			ReturnType: tree.FixedReturnType(types.Timestamp),
 			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
-				return tree.MakeDTimestamp(ctx.GetStmtTimestamp(), time.Microsecond), nil
+				return tree.MakeDTimestamp(ctx.GetStmtTimestamp().In(ctx.GetLocation()), time.Microsecond), nil
 			},
 			Info: "Returns the start time of the current statement.",
 		},
@@ -1733,7 +1733,7 @@ CockroachDB supports the following flags:
 				if err != nil {
 					return nil, err
 				}
-				return tree.MakeDTimestampTZ(ts, time.Microsecond), nil
+				return tree.MakeDTimestampTZ(ts.In(ctx.GetLocation()), time.Microsecond), nil
 			},
 			Info: `Returns a timestamp which is very likely to be safe to perform
 against a follower replica.
@@ -1775,15 +1775,15 @@ may increase either contention or retry errors, or both.`,
 			Types:             tree.ArgTypes{},
 			ReturnType:        tree.FixedReturnType(types.TimestampTZ),
 			PreferredOverload: true,
-			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
-				return tree.MakeDTimestampTZ(timeutil.Now(), time.Microsecond), nil
+			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				return tree.MakeDTimestampTZ(timeutil.Now().In(ctx.GetLocation()), time.Microsecond), nil
 			},
 			Info: "Returns the current system time on one of the cluster nodes.",
 		},
 		tree.Overload{
 			Types:      tree.ArgTypes{},
 			ReturnType: tree.FixedReturnType(types.Timestamp),
-			Fn: func(_ *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
 				return tree.MakeDTimestamp(timeutil.Now(), time.Microsecond), nil
 			},
 			Info: "Returns the current system time on one of the cluster nodes.",
@@ -2491,7 +2491,7 @@ may increase either contention or retry errors, or both.`,
 				_, beforeOffsetSecs := ts.Time.Zone()
 				_, afterOffsetSecs := ts.Time.In(loc).Zone()
 				durationDelta := time.Duration(beforeOffsetSecs-afterOffsetSecs) * time.Second
-				return tree.MakeDTimestampTZ(ts.Time.Add(durationDelta), time.Microsecond), nil
+				return tree.MakeDTimestampTZ(ts.Time.Add(durationDelta).In(ctx.GetLocation()), time.Microsecond), nil
 			},
 			Info: "Treat given time stamp without time zone as located in the specified time zone.",
 		},
@@ -2582,7 +2582,7 @@ may increase either contention or retry errors, or both.`,
 				_, beforeOffsetSecs := ts.Time.Zone()
 				_, afterOffsetSecs := ts.Time.In(loc).Zone()
 				durationDelta := time.Duration(beforeOffsetSecs-afterOffsetSecs) * time.Second
-				return tree.MakeDTimestampTZ(ts.Time.Add(durationDelta), time.Microsecond), nil
+				return tree.MakeDTimestampTZ(ts.Time.Add(durationDelta).In(ctx.GetLocation()), time.Microsecond), nil
 			},
 			Info: "Treat given time stamp without time zone as located in the specified time zone.\n" +
 				"This is deprecated in favor of timezone(str, timestamp)",
