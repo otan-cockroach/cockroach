@@ -1035,6 +1035,8 @@ func newNameFromStr(s string) *tree.Name {
 
 %type <tree.Expr> opt_alter_column_using
 
+%type <bool> opt_if_not_exists
+
 %type <bool> opt_temp
 %type <bool> opt_temp_create_table
 
@@ -1621,25 +1623,15 @@ alter_table_cmd:
   {
     $$.val = &tree.AlterTableRenameConstraint{Constraint: tree.Name($3), NewName: tree.Name($5) }
   }
-  // ALTER TABLE <name> ADD <coldef>
-| ADD column_def
+  // ALTER TABLE <name> ADD [IF NOT EXISTS] <coldef>
+| ADD opt_if_not_exists column_def
   {
-    $$.val = &tree.AlterTableAddColumn{IfNotExists: false, ColumnDef: $2.colDef()}
+    $$.val = &tree.AlterTableAddColumn{IfNotExists: $2.bool(), ColumnDef: $3.colDef()}
   }
-  // ALTER TABLE <name> ADD IF NOT EXISTS <coldef>
-| ADD IF NOT EXISTS column_def
+  // ALTER TABLE <name> ADD COLUMN [IF NOT EXISTS] <coldef>
+| ADD COLUMN opt_if_not_exists column_def
   {
-    $$.val = &tree.AlterTableAddColumn{IfNotExists: true, ColumnDef: $5.colDef()}
-  }
-  // ALTER TABLE <name> ADD COLUMN <coldef>
-| ADD COLUMN column_def
-  {
-    $$.val = &tree.AlterTableAddColumn{IfNotExists: false, ColumnDef: $3.colDef()}
-  }
-  // ALTER TABLE <name> ADD COLUMN IF NOT EXISTS <coldef>
-| ADD COLUMN IF NOT EXISTS column_def
-  {
-    $$.val = &tree.AlterTableAddColumn{IfNotExists: true, ColumnDef: $6.colDef()}
+    $$.val = &tree.AlterTableAddColumn{IfNotExists: $3.bool(), ColumnDef: $4.colDef()}
   }
   // ALTER TABLE <name> ALTER [COLUMN] <colname> {SET DEFAULT <expr>|DROP DEFAULT}
 | ALTER opt_column column_name alter_column_default
@@ -4248,32 +4240,18 @@ pause_stmt:
 // WEBDOCS/create-table.html
 // WEBDOCS/create-table-as.html
 create_table_stmt:
-  CREATE opt_temp_create_table TABLE table_name '(' opt_table_elem_list ')' opt_interleave opt_partition_by opt_table_with
+  CREATE opt_temp_create_table TABLE opt_if_not_exists table_name '(' opt_table_elem_list ')' opt_interleave opt_partition_by opt_table_with
   {
-    name := $4.unresolvedObjectName().ToTableName()
+    name := $5.unresolvedObjectName().ToTableName()
     $$.val = &tree.CreateTable{
       Table: name,
-      IfNotExists: false,
-      Interleave: $8.interleave(),
-      Defs: $6.tblDefs(),
+      Interleave: $9.interleave(),
+      Defs: $7.tblDefs(),
       AsSource: nil,
-      PartitionBy: $9.partitionBy(),
+      PartitionBy: $10.partitionBy(),
       Temporary: $2.persistenceType(),
-      StorageParams: $10.storageParams(),
-    }
-  }
-| CREATE opt_temp_create_table TABLE IF NOT EXISTS table_name '(' opt_table_elem_list ')' opt_interleave opt_partition_by opt_table_with
-  {
-    name := $7.unresolvedObjectName().ToTableName()
-    $$.val = &tree.CreateTable{
-      Table: name,
-      IfNotExists: true,
-      Interleave: $11.interleave(),
-      Defs: $9.tblDefs(),
-      AsSource: nil,
-      PartitionBy: $12.partitionBy(),
-      Temporary: $2.persistenceType(),
-      StorageParams: $13.storageParams(),
+      StorageParams: $11.storageParams(),
+      IfNotExists: $4.bool(),
     }
   }
 
@@ -4319,28 +4297,16 @@ storage_parameter_list:
   }
 
 create_table_as_stmt:
-  CREATE opt_temp_create_table TABLE table_name create_as_opt_col_list opt_table_with AS select_stmt opt_create_as_data
+  CREATE opt_temp_create_table TABLE opt_if_not_exists table_name create_as_opt_col_list opt_table_with AS select_stmt opt_create_as_data
   {
-    name := $4.unresolvedObjectName().ToTableName()
+    name := $5.unresolvedObjectName().ToTableName()
     $$.val = &tree.CreateTable{
       Table: name,
-      IfNotExists: false,
+      IfNotExists: $4.bool(),
       Interleave: nil,
-      Defs: $5.tblDefs(),
-      AsSource: $8.slct(),
-      StorageParams: $6.storageParams(),
-    }
-  }
-| CREATE opt_temp_create_table TABLE IF NOT EXISTS table_name create_as_opt_col_list opt_table_with AS select_stmt opt_create_as_data
-  {
-    name := $7.unresolvedObjectName().ToTableName()
-    $$.val = &tree.CreateTable{
-      Table: name,
-      IfNotExists: true,
-      Interleave: nil,
-      Defs: $8.tblDefs(),
-      AsSource: $11.slct(),
-      StorageParams: $9.storageParams(),
+      Defs: $6.tblDefs(),
+      AsSource: $9.slct(),
+      StorageParams: $7.storageParams(),
     }
   }
 
@@ -4348,6 +4314,10 @@ opt_create_as_data:
   /* EMPTY */  { /* no error */ }
 | WITH DATA    { /* SKIP DOC */ /* This is the default */ }
 | WITH NO DATA { return unimplemented(sqllex, "create table as with no data") }
+
+opt_if_not_exists:
+  IF NOT EXISTS         { $$.val = true }
+| /*EMPTY*/             { $$.val = false }
 
 /*
  * Redundancy here is needed to avoid shift/reduce conflicts,
@@ -4561,17 +4531,13 @@ col_qualification:
   {
     $$.val = tree.NamedColumnQualification{Qualification: &tree.ColumnFamilyConstraint{Family: tree.Name($2)}}
   }
-| CREATE FAMILY family_name
+| CREATE opt_if_not_exists FAMILY family_name
   {
-    $$.val = tree.NamedColumnQualification{Qualification: &tree.ColumnFamilyConstraint{Family: tree.Name($3), Create: true}}
+    $$.val = tree.NamedColumnQualification{Qualification: &tree.ColumnFamilyConstraint{Family: tree.Name($4), Create: true, IfNotExists: $2.bool()}}
   }
 | CREATE FAMILY
   {
     $$.val = tree.NamedColumnQualification{Qualification: &tree.ColumnFamilyConstraint{Create: true}}
-  }
-| CREATE IF NOT EXISTS FAMILY family_name
-  {
-    $$.val = tree.NamedColumnQualification{Qualification: &tree.ColumnFamilyConstraint{Family: tree.Name($6), Create: true, IfNotExists: true}}
   }
 
 // DEFAULT NULL is already the default for Postgres. But define it here and
@@ -4996,22 +4962,14 @@ numeric_only:
 //
 // %SeeAlso: CREATE TABLE
 create_sequence_stmt:
-  CREATE opt_temp SEQUENCE sequence_name opt_sequence_option_list
+  CREATE opt_temp SEQUENCE opt_if_not_exists sequence_name opt_sequence_option_list
   {
-    name := $4.unresolvedObjectName().ToTableName()
+    name := $5.unresolvedObjectName().ToTableName()
     $$.val = &tree.CreateSequence {
       Name: name,
       Temporary: $2.persistenceType(),
-      Options: $5.seqOpts(),
-    }
-  }
-| CREATE opt_temp SEQUENCE IF NOT EXISTS sequence_name opt_sequence_option_list
-  {
-    name := $7.unresolvedObjectName().ToTableName()
-    $$.val = &tree.CreateSequence {
-      Name: name, Options: $8.seqOpts(),
-      Temporary: $2.persistenceType(),
-      IfNotExists: true,
+      IfNotExists: $4.bool(),
+      Options: $6.seqOpts(),
     }
   }
 | CREATE opt_temp SEQUENCE error // SHOW HELP: CREATE SEQUENCE
@@ -5075,13 +5033,9 @@ truncate_stmt:
 // %Text: CREATE USER [IF NOT EXISTS] <name> [ [WITH] PASSWORD <passwd> ]
 // %SeeAlso: DROP USER, SHOW USERS, WEBDOCS/create-user.html
 create_user_stmt:
-  CREATE USER string_or_placeholder opt_password
+  CREATE USER opt_if_not_exists string_or_placeholder opt_password
   {
-    $$.val = &tree.CreateUser{Name: $3.expr(), Password: $4.expr()}
-  }
-| CREATE USER IF NOT EXISTS string_or_placeholder opt_password
-  {
-    $$.val = &tree.CreateUser{Name: $6.expr(), Password: $7.expr(), IfNotExists: true}
+    $$.val = &tree.CreateUser{Name: $4.expr(), Password: $5.expr(), IfNotExists: $3.bool()}
   }
 | CREATE USER error // SHOW HELP: CREATE USER
 
@@ -5107,13 +5061,9 @@ password_clause:
 // %Text: CREATE ROLE [IF NOT EXISTS] <name>
 // %SeeAlso: DROP ROLE, SHOW ROLES
 create_role_stmt:
-  CREATE role_or_group string_or_placeholder
+  CREATE role_or_group opt_if_not_exists string_or_placeholder
   {
-    $$.val = &tree.CreateRole{Name: $3.expr()}
-  }
-| CREATE role_or_group IF NOT EXISTS string_or_placeholder
-  {
-    $$.val = &tree.CreateRole{Name: $6.expr(), IfNotExists: true}
+    $$.val = &tree.CreateRole{Name: $4.expr(), IfNotExists: $3.bool()}
   }
 | CREATE role_or_group error // SHOW HELP: CREATE ROLE
 
@@ -5128,13 +5078,14 @@ role_or_group:
 // %Text: CREATE [TEMPORARY | TEMP] VIEW <viewname> [( <colnames...> )] AS <source>
 // %SeeAlso: CREATE TABLE, SHOW CREATE, WEBDOCS/create-view.html
 create_view_stmt:
-  CREATE opt_temp opt_view_recursive VIEW view_name opt_column_list AS select_stmt
+  CREATE opt_temp opt_view_recursive VIEW opt_if_not_exists view_name opt_column_list AS select_stmt
   {
-    name := $5.unresolvedObjectName().ToTableName()
+    name := $6.unresolvedObjectName().ToTableName()
     $$.val = &tree.CreateView{
       Name: name,
-      ColumnNames: $6.nameList(),
-      AsSource: $8.slct(),
+      ColumnNames: $7.nameList(),
+      AsSource: $9.slct(),
+      IfNotExists: $5.bool(),
       Temporary: $2.persistenceType(),
     }
   }
@@ -5629,27 +5580,17 @@ transaction_read_mode:
 // %Text: CREATE DATABASE [IF NOT EXISTS] <name>
 // %SeeAlso: WEBDOCS/create-database.html
 create_database_stmt:
-  CREATE DATABASE database_name opt_with opt_template_clause opt_encoding_clause opt_lc_collate_clause opt_lc_ctype_clause
+  CREATE DATABASE opt_if_not_exists database_name opt_with opt_template_clause opt_encoding_clause opt_lc_collate_clause opt_lc_ctype_clause
   {
     $$.val = &tree.CreateDatabase{
-      Name: tree.Name($3),
-      Template: $5,
-      Encoding: $6,
-      Collate: $7,
-      CType: $8,
+      Name: tree.Name($4),
+      Template: $6,
+      Encoding: $7,
+      Collate: $8,
+      CType: $9,
+      IfNotExists: $3.bool(),
     }
   }
-| CREATE DATABASE IF NOT EXISTS database_name opt_with opt_template_clause opt_encoding_clause opt_lc_collate_clause opt_lc_ctype_clause
-  {
-    $$.val = &tree.CreateDatabase{
-      IfNotExists: true,
-      Name: tree.Name($6),
-      Template: $8,
-      Encoding: $9,
-      Collate: $10,
-      CType: $11,
-    }
-   }
 | CREATE DATABASE error // SHOW HELP: CREATE DATABASE
 
 opt_template_clause:
