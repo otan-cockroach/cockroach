@@ -45,6 +45,7 @@ const (
 	ServerMsgEmptyQuery           ServerMessageType = 'I'
 	ServerMsgErrorResponse        ServerMessageType = 'E'
 	ServerMsgNoData               ServerMessageType = 'n'
+	ServerMsgNotice               ServerMessageType = 'N'
 	ServerMsgParameterDescription ServerMessageType = 't'
 	ServerMsgParameterStatus      ServerMessageType = 'S'
 	ServerMsgParseComplete        ServerMessageType = '1'
@@ -68,6 +69,19 @@ const (
 	ServerErrFieldSrcLine     ServerErrFieldType = 'L'
 	ServerErrFieldSrcFunction ServerErrFieldType = 'R'
 )
+
+// serverNoticeOrErrorField denotes a message to send over the protocol.
+// It is valid in both errors and notices.
+// See: https://www.postgresql.org/docs/9.2/protocol-message-formats.html
+type serverNoticeOrErrorField struct {
+	Type ServerErrFieldType
+	Message string
+}
+v
+// ServerNotice 
+type ServerNotice struct {
+	serverNoticeOrErrorField
+}
 
 // PrepareType represents a subtype for prepare messages.
 //go:generate stringer -type=PrepareType
