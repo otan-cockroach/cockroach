@@ -29,6 +29,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwireconn"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlbase"
@@ -383,7 +384,7 @@ func (s *Server) SetupConn(
 	memMetrics MemoryMetrics,
 ) (ConnectionHandler, error) {
 	sd := s.newSessionData(args)
-	sdMut := s.makeSessionDataMutator(sd, args.SessionDefaults)
+	sdMut := s.makeSessionDataMutator(sd, args.SessionDefaults, clientComm)
 	ex, err := s.newConnExecutor(
 		ctx, sd, &sdMut, stmtBuf, clientComm, memMetrics, &s.Metrics, resetSessionDataToDefaults)
 	return ConnectionHandler{ex}, err
@@ -464,12 +465,15 @@ func (s *Server) newSessionData(args SessionArgs) *sessiondata.SessionData {
 }
 
 func (s *Server) makeSessionDataMutator(
-	sd *sessiondata.SessionData, defaults SessionDefaults,
+	sd *sessiondata.SessionData,
+	defaults SessionDefaults,
+	clientConnBuffer pgwireconn.ClientConnBuffer,
 ) sessionDataMutator {
 	return sessionDataMutator{
-		data:     sd,
-		defaults: defaults,
-		settings: s.cfg.Settings,
+		data:             sd,
+		defaults:         defaults,
+		settings:         s.cfg.Settings,
+		clientConnBuffer: clientConnBuffer,
 	}
 }
 
@@ -561,7 +565,7 @@ func (s *Server) newConnExecutor(
 			settings: s.cfg.Settings,
 		},
 		memMetrics: memMetrics,
-		planner:    planner{execCfg: s.cfg},
+		planner:    planner{execCfg: s.cfg, clientConnBuffer: clientComm},
 
 		// ctxHolder will be reset at the start of run(). We only define
 		// it here so that an early call to close() doesn't panic.
@@ -1913,6 +1917,7 @@ func (ex *connExecutor) initEvalCtx(ctx context.Context, evalCtx *extendedEvalCo
 			SessionData:        ex.sessionData,
 			SessionAccessor:    p,
 			PrivilegedAccessor: p,
+			ClientConnBuffer:   p.clientConnBuffer,
 			Settings:           ex.server.cfg.Settings,
 			TestingKnobs:       ex.server.cfg.EvalContextTestingKnobs,
 			ClusterID:          ex.server.cfg.ClusterID(),

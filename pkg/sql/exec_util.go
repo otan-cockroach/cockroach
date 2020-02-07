@@ -45,6 +45,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgwireconn"
 	"github.com/cockroachdb/cockroach/pkg/sql/querycache"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
@@ -1780,9 +1781,10 @@ type spanWithIndex struct {
 // state. It mostly mutates the Session's SessionData, but not exclusively (e.g.
 // see curTxnReadOnly).
 type sessionDataMutator struct {
-	data     *sessiondata.SessionData
-	defaults SessionDefaults
-	settings *cluster.Settings
+	clientConnBuffer pgwireconn.ClientConnBuffer
+	data             *sessiondata.SessionData
+	defaults         SessionDefaults
+	settings         *cluster.Settings
 	// setCurTxnReadOnly is called when we execute SET transaction_read_only = ...
 	setCurTxnReadOnly func(val bool)
 	// onTempSchemaCreation is called when the temporary schema is set
@@ -1812,6 +1814,7 @@ func (m *sessionDataMutator) notifyOnDataChangeListeners(key string, val string)
 func (m *sessionDataMutator) SetApplicationName(appName string) {
 	m.data.ApplicationName = appName
 	m.notifyOnDataChangeListeners("application_name", appName)
+	m.clientConnBuffer.BufferParamStatus("application_name", appName)
 }
 
 func (m *sessionDataMutator) SetBytesEncodeFormat(val sessiondata.BytesEncodeFormat) {
@@ -1889,7 +1892,7 @@ func (m *sessionDataMutator) UpdateSearchPath(paths []string) {
 
 func (m *sessionDataMutator) SetLocation(loc *time.Location) {
 	m.data.DataConversion.Location = loc
-	m.notifyOnDataChangeListeners("TimeZone", sessionDataTimeZoneFormat(loc))
+	m.clientConnBuffer.BufferParamStatus("TimeZone", sessionDataTimeZoneFormat(loc))
 }
 
 func (m *sessionDataMutator) SetReadOnly(val bool) {
