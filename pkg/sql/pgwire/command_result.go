@@ -218,6 +218,14 @@ func (r *commandResult) SetPrepStmtOutput(ctx context.Context, cols sqlbase.Resu
 	_ /* err */ = r.conn.writeRowDescription(ctx, cols, nil /* formatCodes */, &r.conn.writerState.buf)
 }
 
+func (r *commandResult) BufferStatusParam(ctx context.Context, param, value string) {
+	r.conn.bufferStatusParam(param, value)
+}
+
+func (r *commandResult) BufferNotice(ctx context.Context, notice string) {
+
+}
+
 // SetPortalOutput is part of the DescribeResult interface.
 func (r *commandResult) SetPortalOutput(
 	ctx context.Context, cols sqlbase.ResultColumns, formatCodes []pgwirebase.FormatCode,

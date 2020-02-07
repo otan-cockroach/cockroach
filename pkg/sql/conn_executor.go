@@ -1913,6 +1913,7 @@ func (ex *connExecutor) initEvalCtx(ctx context.Context, evalCtx *extendedEvalCo
 			SessionData:        ex.sessionData,
 			SessionAccessor:    p,
 			PrivilegedAccessor: p,
+			RestrictedClientComm: ex.clientComm.
 			Settings:           ex.server.cfg.Settings,
 			TestingKnobs:       ex.server.cfg.EvalContextTestingKnobs,
 			ClusterID:          ex.server.cfg.ClusterID(),

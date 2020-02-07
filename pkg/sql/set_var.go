@@ -12,6 +12,7 @@ package sql
 
 import (
 	"context"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -130,6 +131,7 @@ func (n *setVarNode) startExec(params runParams) error {
 	if n.v.RuntimeSet != nil {
 		return n.v.RuntimeSet(params.ctx, params.extendedEvalCtx, strVal)
 	}
+	debug.PrintStack()
 	return n.v.Set(params.ctx, params.p.sessionDataMutator, strVal)
 }
 
