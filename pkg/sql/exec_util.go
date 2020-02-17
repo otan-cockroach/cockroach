@@ -1905,7 +1905,7 @@ func (m *sessionDataMutator) UpdateSearchPath(paths []string) {
 
 func (m *sessionDataMutator) SetLocation(loc *time.Location) {
 	m.data.DataConversion.Location = loc
-	m.notifyOnDataChangeListeners("TimeZone", sessionDataTimeZoneFormat(loc))
+	m.notifyOnDataChangeListeners("TimeZone", pgwireSessionDataTimeZoneFormat(loc))
 }
 
 func (m *sessionDataMutator) SetReadOnly(val bool) {

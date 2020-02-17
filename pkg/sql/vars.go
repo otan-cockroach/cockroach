@@ -940,6 +940,42 @@ func sessionDataTimeZoneFormat(loc *time.Location) string {
 	return locStr
 }
 
+// pgwireSessionDataTimeZoneFormat returns the appropriate timezone format
+// to output when the `timezone` is required output over pgwire.
+// If the time zone is a "fixed offset" one, initialized from an offset
+// and not a standard name, then we use a magic format in the Location's
+// name. We attempt to parse that here and retrieve the original offset
+// specified by the user.
+func pgwireSessionDataTimeZoneFormat(loc *time.Location) string {
+	locStr := loc.String()
+	offset, _, parsed := timeutil.ParseFixedOffsetTimeZone(locStr)
+	if parsed {
+		neg := false
+		if offset < 0 {
+			neg = true
+			offset = -offset
+		}
+		hours := offset / 3600
+		mins := (offset / 60) % 60
+		secs := offset % 60
+
+		baseOffsetStr := fmt.Sprintf("%02d", hours)
+		if mins > 0 || secs > 0 {
+			baseOffsetStr += fmt.Sprintf(":%02d", mins)
+			if secs > 0 {
+				baseOffsetStr += fmt.Sprintf(":%02d", secs)
+			}
+		}
+
+		innerSign, outerSign := "+", "-"
+		if neg {
+			outerSign, innerSign = "+", "-"
+		}
+		return fmt.Sprintf("\u003c%s%s\u003e%s%s", innerSign, baseOffsetStr, outerSign, baseOffsetStr)
+	}
+	return locStr
+}
+
 func makeCompatBoolVar(varName string, displayValue, anyValAllowed bool) sessionVar {
 	displayValStr := formatBoolAsPostgresSetting(displayValue)
 	return sessionVar{
