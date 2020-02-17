@@ -638,6 +638,9 @@ type CommandResultCommBase interface {
 	// BufferParamStatus buffers any updates to a parameter status.
 	// This gets flushed only when the CommandResult is closed.
 	BufferParamStatus(string, string)
+	// BufferNotice buffers a notice to the connection.
+	// This gets flushed only when the CommandResult is closed.
+	BufferNotice(string)
 }
 
 // CommandResultErrBase is the subset of CommandResult dealing with setting a
@@ -876,6 +879,9 @@ func (r *bufferedCommandResult) SetColumns(_ context.Context, cols sqlbase.Resul
 // BufferParamStatus is part of the RestrictedCommandResult interface.
 func (r *bufferedCommandResult) BufferParamStatus(key string, val string) {}
 
+// BufferNotice is part of the RestrictedCommandResult interface.
+func (r *bufferedCommandResult) BufferNotice(notice string) {}
+
 // ResetStmtType is part of the RestrictedCommandResult interface.
 func (r *bufferedCommandResult) ResetStmtType(stmt tree.Statement) {
 	panic("unimplemented")
@@ -953,4 +959,8 @@ var _ CommandResultCommBase = &noopCommandResultCommBase{}
 
 // BufferParamStatus implements the CommandResultCommBase interface.
 func (c *noopCommandResultCommBase) BufferParamStatus(string, string) {
+}
+
+// BufferNotice implements the CommandResultCommBase interface.
+func (c *noopCommandResultCommBase) BufferNotice(string) {
 }

@@ -156,8 +156,11 @@ func (n *dropIndexNode) dropShardColumnAndConstraint(
 	if err := tableDesc.AllocateIDs(); err != nil {
 		return err
 	}
-	mutationID, err := params.p.createOrUpdateSchemaChangeJob(params.ctx, tableDesc,
-		tree.AsStringWithFQNames(n.n, params.Ann()))
+	mutationID, err := params.p.createOrUpdateSchemaChangeJob(
+		params.ctx,
+		tableDesc,
+		tree.AsStringWithFQNames(n.n, params.Ann()),
+	)
 	if err != nil {
 		return err
 	}
@@ -472,6 +475,12 @@ func (p *planner) dropIndexByName(
 	if err != nil {
 		return err
 	}
+	p.commandResultComm.BufferNotice(
+		fmt.Sprintf(
+			"Index %q will be dropped asynchronously and will be complete after the GC TTL",
+			idxName.String(),
+		),
+	)
 	if err := p.writeSchemaChange(ctx, tableDesc, mutationID); err != nil {
 		return err
 	}
