@@ -188,7 +188,7 @@ func (r *commandResult) AddRow(ctx context.Context, row tree.Datums) error {
 	return err
 }
 
-// DisableBuffering is part of the CommandResult interface.
+// DisableBuffering is part of the CommandResultCommBase interface.
 func (r *commandResult) DisableBuffering() {
 	r.assertNotReleased()
 	r.bufferingDisabled = true
@@ -199,6 +199,14 @@ func (r *commandResult) BufferParamStatus(param string, val string) {
 	r.flushBeforeCloseFuncs = append(
 		r.flushBeforeCloseFuncs,
 		func() error { return r.conn.bufferParamStatus(param, val) },
+	)
+}
+
+// BufferNotice is part of the CommandResult interface.
+func (r *commandResult) BufferNotice(notice string) {
+	r.flushBeforeCloseFuncs = append(
+		r.flushBeforeCloseFuncs,
+		func() error { return r.conn.bufferNotice(notice) },
 	)
 }
 

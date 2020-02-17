@@ -582,6 +582,18 @@ func (c *conn) bufferParamStatus(param, value string) error {
 	return c.msgBuilder.finishMsg(&c.writerState.buf)
 }
 
+func (c *conn) bufferNotice(notice string) error {
+	c.msgBuilder.initMsg(pgwirebase.ServerMsgNoticeResponse)
+	c.msgBuilder.putErrFieldMsg(pgwirebase.ServerErrFieldSeverity)
+	c.msgBuilder.writeTerminatedString("NOTICE")
+	c.msgBuilder.putErrFieldMsg(pgwirebase.ServerErrFieldSQLState)
+	c.msgBuilder.writeTerminatedString("00000")
+	c.msgBuilder.putErrFieldMsg(pgwirebase.ServerErrFieldMsgPrimary)
+	c.msgBuilder.writeTerminatedString(notice)
+	c.msgBuilder.nullTerminate()
+	return c.msgBuilder.finishMsg(&c.writerState.buf)
+}
+
 func (c *conn) sendInitialConnData(
 	ctx context.Context, sqlServer *sql.Server,
 ) (sql.ConnectionHandler, error) {

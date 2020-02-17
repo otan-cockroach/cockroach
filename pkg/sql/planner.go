@@ -116,6 +116,10 @@ type schemaInterface struct {
 type planner struct {
 	txn *client.Txn
 
+	// commandResultComm is used to communicate with the client provided the CommandResult
+	// can successfully execute.
+	commandResultComm CommandResultCommBase
+
 	// Reference to the corresponding sql Statement for this query.
 	stmt *Statement
 

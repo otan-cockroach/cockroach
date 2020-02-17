@@ -57,6 +57,14 @@ import (
 // logging overall usage growth in the log.
 var noteworthyMemoryUsageBytes = envutil.EnvOrDefaultInt64("COCKROACH_NOTEWORTHY_SESSION_MEMORY_USAGE", 1024*1024)
 
+// NoticesDisabled is the cluster setting that allows users
+// to disable notices, in case they are causing bugs.
+var NoticesDisabled = settings.RegisterPublicBoolSetting(
+	"sql.notices.disabled",
+	"disable notices in the server/client protocol being sent",
+	false,
+)
+
 // A connExecutor is in charge of executing queries received on a given client
 // connection. The connExecutor implements a state machine (dictated by the
 // Postgres/pgwire session semantics). The state machine is supposed to run
@@ -1985,6 +1993,7 @@ func (ex *connExecutor) implicitTxn() bool {
 // query in the context of this session.
 func (ex *connExecutor) initPlanner(ctx context.Context, p *planner) {
 	p.cancelChecker = sqlbase.NewCancelChecker(ctx)
+	p.commandResultComm = &noopCommandResultCommBase{}
 
 	ex.initEvalCtx(ctx, &p.extendedEvalCtx, p)
 
@@ -2002,6 +2011,21 @@ type resetPlannerFunc func(
 	stmtTS time.Time,
 	comm CommandResultCommBase,
 )
+
+// wrappedCommandResultCommBase is a wrapper around CommandResultCommBase,
+// forbidding notices to be printed if the cluster setting is on.
+type wrappedCommandResultCommBase struct {
+	CommandResultCommBase
+	sv *settings.Values
+}
+
+// BufferNotice is part of the CommandResultCommBase interface.
+func (c *wrappedCommandResultCommBase) BufferNotice(notice string) {
+	if NoticesDisabled.Get(c.sv) {
+		return
+	}
+	c.CommandResultCommBase.BufferNotice(notice)
+}
 
 func (ex *connExecutor) resetPlanner(
 	ctx context.Context,
@@ -2022,7 +2046,12 @@ func (ex *connExecutor) resetPlanner(
 	p.semaCtx.AsOfTimestamp = nil
 	p.semaCtx.Annotations = tree.MakeAnnotations(numAnnotations)
 
-	p.sessionDataMutator.commandResultComm = res
+	wrappedRes := &wrappedCommandResultCommBase{
+		CommandResultCommBase: res,
+		sv:                    &ex.server.cfg.Settings.SV,
+	}
+	p.commandResultComm = wrappedRes
+	p.sessionDataMutator.commandResultComm = wrappedRes
 
 	ex.resetEvalCtx(&p.extendedEvalCtx, txn, stmtTS)
 

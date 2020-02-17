@@ -12,6 +12,7 @@ package sql
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
@@ -59,7 +60,11 @@ func (n *createViewNode) startExec(params runParams) error {
 			backRefMutable = sqlbase.NewMutableExistingTableDescriptor(*updated.desc.TableDesc())
 		}
 		if !isTemporary && backRefMutable.Temporary {
-			// TODO(sqlexec): consider printing a notice here.
+			// This notice is sent from pg, let's imitate.
+			params.p.commandResultComm.BufferNotice(
+				fmt.Sprintf(`view "%s" will be a temporary view`, viewName),
+			)
+
 			log.Warningf(
 				params.ctx,
 				"view %s depends on temporary object %s, view will be temporary",
