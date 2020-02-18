@@ -134,6 +134,27 @@ func (r *insertRun) initRowContainer(
 // processSourceRow processes one row from the source for insertion and, if
 // result rows are needed, saves it in the result row container.
 func (r *insertRun) processSourceRow(params runParams, rowVals tree.Datums) error {
+	// Perform all necessary casts.
+	for i, rowVal := range rowVals {
+		if !r.insertCols[i].Type.Equivalent(rowVal.ResolvedType()) {
+			if _, ok := tree.FindCast(
+				rowVal.ResolvedType().Oid(),
+				r.insertCols[i].Type.Oid(),
+				tree.CastContextAssign,
+			); ok {
+				newVal, err := tree.PerformCast(
+					&params.extendedEvalCtx.EvalContext,
+					rowVal,
+					&r.insertCols[i].Type,
+				)
+				if err != nil {
+					return err
+				}
+				rowVals[i] = newVal
+			}
+		}
+	}
+
 	if err := enforceLocalColumnConstraints(rowVals, r.insertCols); err != nil {
 		return err
 	}

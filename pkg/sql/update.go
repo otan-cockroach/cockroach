@@ -256,6 +256,28 @@ func (u *updateNode) processSourceRow(params runParams, sourceVals tree.Datums) 
 		}
 	}
 
+	// Perform all necessary casts.
+	for i, col := range u.run.tu.ru.UpdateCols {
+		sourceVal := u.run.updateValues[i]
+		if !col.Type.Equivalent(sourceVal.ResolvedType()) {
+			if _, ok := tree.FindCast(
+				sourceVal.ResolvedType().Oid(),
+				col.Type.Oid(),
+				tree.CastContextAssign,
+			); ok {
+				newVal, err := tree.PerformCast(
+					&params.extendedEvalCtx.EvalContext,
+					sourceVal,
+					&col.Type,
+				)
+				if err != nil {
+					return err
+				}
+				u.run.updateValues[i] = newVal
+			}
+		}
+	}
+
 	// At this point, we have populated updateValues with the result of
 	// computing the RHS for every assignment.
 	//

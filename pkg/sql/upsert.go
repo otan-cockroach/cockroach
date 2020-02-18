@@ -152,6 +152,28 @@ func (n *upsertNode) BatchedNext(params runParams) (bool, error) {
 // processSourceRow processes one row from the source for upsertion.
 // The table writer is in charge of accumulating the result rows.
 func (n *upsertNode) processSourceRow(params runParams, rowVals tree.Datums) error {
+	// Perform all necessary casts.
+	for i, col := range n.run.insertCols {
+		rowVal := rowVals[i]
+		if !col.Type.Equivalent(rowVal.ResolvedType()) {
+			if _, ok := tree.FindCast(
+				rowVal.ResolvedType().Oid(),
+				col.Type.Oid(),
+				tree.CastContextAssign,
+			); ok {
+				newVal, err := tree.PerformCast(
+					&params.extendedEvalCtx.EvalContext,
+					rowVal,
+					&col.Type,
+				)
+				if err != nil {
+					return err
+				}
+				rowVals[i] = newVal
+			}
+		}
+	}
+
 	if err := enforceLocalColumnConstraints(rowVals, n.run.insertCols); err != nil {
 		return err
 	}
