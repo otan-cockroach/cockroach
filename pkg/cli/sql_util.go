@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -37,20 +36,12 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/cockroachdb/cockroach/pkg/util/version"
 	"github.com/cockroachdb/errors"
-	"github.com/lib/pq"
+	"github.com/jackc/pgx"
 )
-
-type sqlConnI interface {
-	driver.Conn
-	//lint:ignore SA1019 TODO(mjibson): clean this up to use go1.8 APIs
-	driver.Execer
-	//lint:ignore SA1019 TODO(mjibson): clean this up to use go1.8 APIs
-	driver.Queryer
-}
 
 type sqlConn struct {
 	url          string
-	conn         sqlConnI
+	conn         *pgx.Conn
 	reconnecting bool
 
 	// dbName is the last known current database, to be reconfigured in
@@ -110,30 +101,34 @@ func (c *sqlConn) ensureConn() error {
 			fmt.Fprintf(stderr, "warning: connection lost!\n"+
 				"opening new connection: all session settings will be lost\n")
 		}
-		base, err := pq.NewConnector(c.url)
-		if err != nil {
-			return wrapConnError(err)
-		}
-		// Add a notice handler - re-use the cliOutputError function in this case.
-		connector := pq.ConnectorWithNoticeHandler(base, func(notice *pq.Error) {
-			cliOutputError(stderr, notice, true /*showSeverity*/, false /*verbose*/)
-		})
 		// TODO(cli): we can't thread ctx through ensureConn usages, as it needs
 		// to follow the gosql.DB interface. We should probably look at initializing
 		// connections only once instead. The context is only used for dialing.
-		conn, err := connector.Connect(context.TODO())
+		pgxConfig, err := pgx.ParseURI(c.url)
+		if err != nil {
+			return err
+		}
+		pgxConfig.OnNotice = func(conn *pgx.Conn, notice *pgx.Notice) {
+			cliOutputError(
+				stderr,
+				(*pgx.PgError)(notice),
+				true,  // showSeverity
+				false, // verbose
+			)
+		}
+		conn, err := pgx.Connect(pgxConfig)
 		if err != nil {
 			return wrapConnError(err)
 		}
 		if c.reconnecting && c.dbName != "" {
 			// Attempt to reset the current database.
-			if _, err := conn.(sqlConnI).Exec(
+			if _, err := conn.Exec(
 				`SET DATABASE = `+tree.NameStringP(&c.dbName), nil,
 			); err != nil {
 				fmt.Fprintf(stderr, "warning: unable to restore current database: %v\n", err)
 			}
 		}
-		c.conn = conn.(sqlConnI)
+		c.conn = conn
 		if err := c.checkServerMetadata(); err != nil {
 			c.Close()
 			return wrapConnError(err)
@@ -377,7 +372,7 @@ func (c *sqlConn) Exec(query string, args []driver.Value) error {
 	return err
 }
 
-func (c *sqlConn) Query(query string, args []driver.Value) (*sqlRows, error) {
+func (c *sqlConn) Query(query string, args []driver.Value) (*pgx.Rows, error) {
 	if err := c.ensureConn(); err != nil {
 		return nil, err
 	}
@@ -392,7 +387,7 @@ func (c *sqlConn) Query(query string, args []driver.Value) (*sqlRows, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &sqlRows{rows: rows.(sqlRowsI), conn: c}, nil
+	return &pgx.Rows{rows: rows, conn: c}, nil
 }
 
 func (c *sqlConn) QueryRow(query string, args []driver.Value) ([]driver.Value, error) {
@@ -427,73 +422,6 @@ func (c *sqlConn) Close() {
 		}
 		c.conn = nil
 	}
-}
-
-type sqlRowsI interface {
-	driver.RowsColumnTypeScanType
-	Result() driver.Result
-	Tag() string
-
-	// Go 1.8 multiple result set interfaces.
-	// TODO(mjibson): clean this up after 1.8 is released.
-	HasNextResultSet() bool
-	NextResultSet() error
-}
-
-type sqlRows struct {
-	rows sqlRowsI
-	conn *sqlConn
-}
-
-func (r *sqlRows) Columns() []string {
-	return r.rows.Columns()
-}
-
-func (r *sqlRows) Result() driver.Result {
-	return r.rows.Result()
-}
-
-func (r *sqlRows) Tag() string {
-	return r.rows.Tag()
-}
-
-func (r *sqlRows) Close() error {
-	err := r.rows.Close()
-	if err == driver.ErrBadConn {
-		r.conn.reconnecting = true
-		r.conn.Close()
-	}
-	return err
-}
-
-// Next populates values with the next row of results. []byte values are copied
-// so that subsequent calls to Next and Close do not mutate values. This
-// makes it slower than theoretically possible but the safety concerns
-// (since this is unobvious and unexpected behavior) outweigh.
-func (r *sqlRows) Next(values []driver.Value) error {
-	err := r.rows.Next(values)
-	if err == driver.ErrBadConn {
-		r.conn.reconnecting = true
-		r.conn.Close()
-	}
-	for i, v := range values {
-		if b, ok := v.([]byte); ok {
-			values[i] = append([]byte{}, b...)
-		}
-	}
-	return err
-}
-
-// NextResultSet prepares the next result set for reading.
-func (r *sqlRows) NextResultSet() (bool, error) {
-	if !r.rows.HasNextResultSet() {
-		return false, nil
-	}
-	return true, r.rows.NextResultSet()
-}
-
-func (r *sqlRows) ColumnTypeScanType(index int) reflect.Type {
-	return r.rows.ColumnTypeScanType(index)
 }
 
 func makeSQLConn(url string) *sqlConn {
@@ -601,10 +529,10 @@ func makeSQLClient(appName string, defaultMode defaultSQLDb) (*sqlConn, error) {
 	return makeSQLConn(sqlURL), nil
 }
 
-type queryFunc func(conn *sqlConn) (*sqlRows, error)
+type queryFunc func(conn *sqlConn) (*pgx.Rows, error)
 
 func makeQuery(query string, parameters ...driver.Value) queryFunc {
-	return func(conn *sqlConn) (*sqlRows, error) {
+	return func(conn *sqlConn) (*pgx.Rows, error) {
 		// driver.Value is an alias for interface{}, but must adhere to a restricted
 		// set of types when being passed to driver.Queryer.Query (see
 		// driver.IsValue). We use driver.DefaultParameterConverter to perform the
@@ -631,7 +559,7 @@ func runQuery(conn *sqlConn, fn queryFunc, showMoreChars bool) ([]string, [][]st
 	}
 
 	defer func() { _ = rows.Close() }()
-	return sqlRowsToStrings(rows, showMoreChars)
+	return pgx.RowsToStrings(rows, showMoreChars)
 }
 
 // handleCopyError ensures the user is properly informed when they issue
@@ -783,14 +711,14 @@ func runQueryAndFormatResults(conn *sqlConn, w io.Writer, fn queryFunc) error {
 	}
 }
 
-// sqlRowsToStrings turns 'rows' into a list of rows, each of which
+// pgx.RowsToStrings turns 'rows' into a list of rows, each of which
 // is a list of column values.
 // 'rows' should be closed by the caller.
 // It returns the header row followed by all data rows.
 // If both the header row and list of rows are empty, it means no row
 // information was returned (eg: statement was not a query).
 // If showMoreChars is true, then more characters are not escaped.
-func sqlRowsToStrings(rows *sqlRows, showMoreChars bool) ([]string, [][]string, error) {
+func pgxRowsToStrings(rows *pgx.Rows, showMoreChars bool) ([]string, [][]string, error) {
 	cols := getColumnStrings(rows, showMoreChars)
 	allRows, err := getAllRowStrings(rows, showMoreChars)
 	if err != nil {
@@ -799,7 +727,7 @@ func sqlRowsToStrings(rows *sqlRows, showMoreChars bool) ([]string, [][]string, 
 	return cols, allRows, nil
 }
 
-func getColumnStrings(rows *sqlRows, showMoreChars bool) []string {
+func getColumnStrings(rows *pgx.Rows, showMoreChars bool) []string {
 	srcCols := rows.Columns()
 	cols := make([]string, len(srcCols))
 	for i, c := range srcCols {
@@ -808,7 +736,7 @@ func getColumnStrings(rows *sqlRows, showMoreChars bool) []string {
 	return cols
 }
 
-func getAllRowStrings(rows *sqlRows, showMoreChars bool) ([][]string, error) {
+func getAllRowStrings(rows *pgx.Rows, showMoreChars bool) ([][]string, error) {
 	var allRows [][]string
 
 	for {
@@ -825,7 +753,7 @@ func getAllRowStrings(rows *sqlRows, showMoreChars bool) ([][]string, error) {
 	return allRows, nil
 }
 
-func getNextRowStrings(rows *sqlRows, showMoreChars bool) ([]string, error) {
+func getNextRowStrings(rows *pgx.Rows, showMoreChars bool) ([]string, error) {
 	cols := rows.Columns()
 	var vals []driver.Value
 	if len(cols) > 0 {

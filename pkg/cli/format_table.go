@@ -26,6 +26,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/encoding/csv"
 	"github.com/cockroachdb/cockroach/pkg/util/syncutil"
 	"github.com/cockroachdb/errors"
+	"github.com/jackc/pgx"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -93,7 +94,7 @@ func newRowSliceIter(allRows [][]string, align string) *rowSliceIter {
 }
 
 type rowIter struct {
-	rows          *sqlRows
+	rows          *pgx.Rows
 	showMoreChars bool
 }
 
@@ -134,7 +135,7 @@ func (iter *rowIter) Align() []int {
 	return align
 }
 
-func newRowIter(rows *sqlRows, showMoreChars bool) *rowIter {
+func newRowIter(rows *pgx.Rows, showMoreChars bool) *rowIter {
 	return &rowIter{
 		rows:          rows,
 		showMoreChars: showMoreChars,
