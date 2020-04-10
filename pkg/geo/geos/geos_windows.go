@@ -8,21 +8,29 @@
 // by the Apache License, Version 2.0, included in the file
 // licenses/APL.txt.
 
-// +build windows
-
 package geos
 
 import (
+	"runtime"
+
 	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
 	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
 )
 
 func WKTToWKB(wkt geopb.WKT) (geopb.WKB, error) {
-	return nil, unimplemented.NewWithIssue(46876, "operation not supported on Windows")
+	return nil, unimplemented.NewWithIssuef(
+		46876,
+		"operation not supported on %s",
+		runtime.GOOS,
+	)
 }
 
 func ClipWKBByRect(
 	wkb geopb.WKB, xmin float64, ymin float64, xmax float64, ymax float64,
 ) (geopb.WKB, error) {
-	return nil, unimplemented.NewWithIssue(46876, "operation not supported on Windows")
+	return nil, unimplemented.NewWithIssuef(
+		46876,
+		"operation not supported on %s",
+		runtime.GOOS,
+	)
 }
