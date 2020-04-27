@@ -11,10 +11,13 @@
 package builtins
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/cockroachdb/cockroach/pkg/geo"
 	"github.com/cockroachdb/cockroach/pkg/geo/geomfn"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/errors"
@@ -165,6 +168,170 @@ var geoBuiltins = map[string]builtinDefinition{
 			},
 		),
 	),
+
+	//
+	// Modifiers
+	//
+
+	"addgeometrycolumn": makeBuiltin(
+		tree.FunctionProperties{
+			Category: categoryGeospatial,
+			Impure:   true,
+		},
+		tree.Overload{
+			Types: tree.ArgTypes{
+				{"catalog_name", types.String},
+				{"schema_name", types.String},
+				{"table_name", types.String},
+				{"column_name", types.String},
+				{"srid", types.Int},
+				{"shape", types.String},
+				{"num_dimensions", types.Int},
+			},
+			ReturnType: tree.FixedReturnType(types.String),
+			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				return addGeometryColumn(
+					ctx,
+					string(tree.MustBeDString(args[0])),
+					string(tree.MustBeDString(args[1])),
+					string(tree.MustBeDString(args[2])),
+					string(tree.MustBeDString(args[3])),
+					int(tree.MustBeDInt(args[4])),
+					string(tree.MustBeDString(args[5])),
+					int(tree.MustBeDInt(args[6])),
+					true,
+				)
+			},
+			Info: infoBuilder{info: "Adds a new geometry column to the database, returning metadata about the column created."}.String(),
+		},
+		tree.Overload{
+			Types: tree.ArgTypes{
+				{"catalog_name", types.String},
+				{"schema_name", types.String},
+				{"table_name", types.String},
+				{"column_name", types.String},
+				{"srid", types.Int},
+				{"shape", types.String},
+				{"num_dimensions", types.Int},
+				{"use_typmod", types.Bool},
+			},
+			ReturnType: tree.FixedReturnType(types.String),
+			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				return addGeometryColumn(
+					ctx,
+					string(tree.MustBeDString(args[0])),
+					string(tree.MustBeDString(args[1])),
+					string(tree.MustBeDString(args[2])),
+					string(tree.MustBeDString(args[3])),
+					int(tree.MustBeDInt(args[4])),
+					string(tree.MustBeDString(args[5])),
+					int(tree.MustBeDInt(args[6])),
+					bool(tree.MustBeDBool(args[7])),
+				)
+			},
+			Info: infoBuilder{info: "Adds a new geometry column to the database, returning metadata about the column created."}.String(),
+		},
+		tree.Overload{
+			Types: tree.ArgTypes{
+				{"schema_name", types.String},
+				{"table_name", types.String},
+				{"column_name", types.String},
+				{"srid", types.Int},
+				{"shape", types.String},
+				{"num_dimensions", types.Int},
+			},
+			ReturnType: tree.FixedReturnType(types.String),
+			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				return addGeometryColumn(
+					ctx,
+					"",
+					string(tree.MustBeDString(args[0])),
+					string(tree.MustBeDString(args[1])),
+					string(tree.MustBeDString(args[2])),
+					int(tree.MustBeDInt(args[3])),
+					string(tree.MustBeDString(args[4])),
+					int(tree.MustBeDInt(args[5])),
+					true,
+				)
+			},
+			Info: infoBuilder{info: "Adds a new geometry column to the database, returning metadata about the column created."}.String(),
+		},
+		tree.Overload{
+			Types: tree.ArgTypes{
+				{"schema_name", types.String},
+				{"table_name", types.String},
+				{"column_name", types.String},
+				{"srid", types.Int},
+				{"shape", types.String},
+				{"num_dimensions", types.Int},
+				{"use_typmod", types.Bool},
+			},
+			ReturnType: tree.FixedReturnType(types.String),
+			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				return addGeometryColumn(
+					ctx,
+					"",
+					string(tree.MustBeDString(args[0])),
+					string(tree.MustBeDString(args[1])),
+					string(tree.MustBeDString(args[2])),
+					int(tree.MustBeDInt(args[3])),
+					string(tree.MustBeDString(args[4])),
+					int(tree.MustBeDInt(args[5])),
+					bool(tree.MustBeDBool(args[6])),
+				)
+			},
+			Info: infoBuilder{info: "Adds a new geometry column to the database, returning metadata about the column created."}.String(),
+		},
+		tree.Overload{
+			Types: tree.ArgTypes{
+				{"table_name", types.String},
+				{"column_name", types.String},
+				{"srid", types.Int},
+				{"shape", types.String},
+				{"num_dimensions", types.Int},
+			},
+			ReturnType: tree.FixedReturnType(types.String),
+			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				return addGeometryColumn(
+					ctx,
+					"",
+					"",
+					string(tree.MustBeDString(args[0])),
+					string(tree.MustBeDString(args[1])),
+					int(tree.MustBeDInt(args[2])),
+					string(tree.MustBeDString(args[3])),
+					int(tree.MustBeDInt(args[4])),
+					true,
+				)
+			},
+			Info: infoBuilder{info: "Adds a new geometry column to the database, returning metadata about the column created."}.String(),
+		},
+		tree.Overload{
+			Types: tree.ArgTypes{
+				{"table_name", types.String},
+				{"column_name", types.String},
+				{"srid", types.Int},
+				{"shape", types.String},
+				{"num_dimensions", types.Int},
+				{"use_typmod", types.Bool},
+			},
+			ReturnType: tree.FixedReturnType(types.String),
+			Fn: func(ctx *tree.EvalContext, args tree.Datums) (tree.Datum, error) {
+				return addGeometryColumn(
+					ctx,
+					"",
+					"",
+					string(tree.MustBeDString(args[0])),
+					string(tree.MustBeDString(args[1])),
+					int(tree.MustBeDInt(args[2])),
+					string(tree.MustBeDString(args[3])),
+					int(tree.MustBeDInt(args[4])),
+					bool(tree.MustBeDBool(args[5])),
+				)
+			},
+			Info: infoBuilder{info: "Adds a new geometry column to the database, returning metadata about the column created."}.String(),
+		},
+	),
 }
 
 // geometryOverload2 hides the boilerplate for builtins operating on two geometries.
@@ -204,6 +371,62 @@ func geometryOverload2BinaryPredicate(
 		types.Bool,
 		ib,
 	)
+}
+
+// addGeometryColumn appends a geometry column to a table.
+func addGeometryColumn(
+	ctx *tree.EvalContext,
+	catalogName string,
+	schemaName string,
+	tableName string,
+	columnName string,
+	srid int,
+	shape string,
+	dimension int,
+	useTypmod bool,
+) (tree.Datum, error) {
+	if dimension != 2 {
+		return nil, pgerror.Newf(
+			pgcode.FeatureNotSupported,
+			"only dimension=2 is currently supported",
+		)
+	}
+	if !useTypmod {
+		return nil, pgerror.Newf(
+			pgcode.FeatureNotSupported,
+			"useTypmod=false is currently not supported",
+		)
+	}
+
+	var un tree.UnresolvedName
+	if catalogName != "" {
+		un = tree.MakeUnresolvedName(catalogName, schemaName, tableName)
+	} else if schemaName != "" {
+		un = tree.MakeUnresolvedName(schemaName, tableName)
+	} else {
+		un = tree.MakeUnresolvedName(tableName)
+	}
+
+	stmt := `ALTER TABLE %s ADD COLUMN %s GEOMETRY(%s,%d)`
+	args := []interface{}{
+		un.String(),
+		columnName,
+		shape,
+		srid,
+	}
+
+	_, err := ctx.InternalExecutor.Query(
+		ctx.Ctx(),
+		"addgeometrycolumn",
+		ctx.Txn,
+		fmt.Sprintf(stmt, args...),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return tree.NewDString(
+		fmt.Sprintf("%s.%s SRID:%d TYPE:%s DIMS:%d", un.String(), columnName, srid, strings.ToUpper(shape), dimension),
+	), nil
 }
 
 func initGeoBuiltins() {
