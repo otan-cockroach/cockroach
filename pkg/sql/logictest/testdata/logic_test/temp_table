@@ -240,3 +240,46 @@ query I
 SELECT * FROM regression_47030
 ----
 2
+
+statement error renaming a table to a different catalog or schema is currently not supported
+ALTER TABLE regression_47030 RENAME TO public.regression_47030
+
+statement ok
+CREATE DATABASE test2
+
+statement ok
+CREATE TABLE not_temp_table(a int)
+
+statement error schema cannot be modified: "pg_temp"
+ALTER TABLE not_temp_table RENAME TO pg_temp.not_temp_table
+
+statement error renaming a table to a different catalog or schema is currently not supported
+ALTER TABLE regression_47030 RENAME TO test2.public.regression_47030
+
+statement error cannot create "test2.pg_temp.regression_47030" because the target database or schema does not exist
+ALTER TABLE regression_47030 RENAME TO test2.pg_temp.regression_47030
+
+statement ok
+ALTER TABLE regression_47030 RENAME TO regression_47030_b
+
+query TT rowsort
+SELECT table_name, type FROM [SHOW TABLES]
+----
+tbl  table
+
+query I
+SELECT * FROM regression_47030_b
+----
+
+statement ok
+ALTER TABLE regression_47030_b RENAME TO pg_temp.regression_47030
+
+query TT rowsort
+SELECT table_name, type FROM [SHOW TABLES]
+----
+tbl  table
+
+query I
+SELECT * FROM regression_47030
+----
+

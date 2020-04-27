@@ -1224,7 +1224,7 @@ func createSystemTable(ctx context.Context, r runner, desc sqlbase.TableDescript
 	// the reserved ID space. (The SQL layer doesn't allow this.)
 	err := r.db.Txn(ctx, func(ctx context.Context, txn *kv.Txn) error {
 		b := txn.NewBatch()
-		tKey := sqlbase.MakePublicTableNameKey(ctx, r.settings, desc.GetParentID(), desc.GetName())
+		tKey := sqlbase.MakeObjectNameKey(ctx, r.settings, desc.GetParentID(), keys.PublicSchemaID, desc.GetName())
 		b.CPut(tKey.Key(), desc.GetID(), nil)
 		b.CPut(sqlbase.MakeDescMetadataKey(desc.GetID()), sqlbase.WrapDescriptor(&desc), nil)
 		if err := txn.SetSystemConfigTrigger(); err != nil {

@@ -131,13 +131,6 @@ func MakeObjectNameKey(
 	return key
 }
 
-// MakePublicTableNameKey is a wrapper around MakeObjectNameKey for public tables.
-func MakePublicTableNameKey(
-	ctx context.Context, settings *cluster.Settings, parentID ID, name string,
-) DescriptorKey {
-	return MakeObjectNameKey(ctx, settings, parentID, keys.PublicSchemaID, name)
-}
-
 // MakeDatabaseNameKey is a wrapper around MakeObjectNameKey for databases.
 func MakeDatabaseNameKey(
 	ctx context.Context, settings *cluster.Settings, name string,

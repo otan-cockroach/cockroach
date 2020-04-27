@@ -15,6 +15,8 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/cockroach/pkg/kv"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
+	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlbase"
@@ -95,6 +97,28 @@ func (n *renameTableNode) startExec(params runParams) error {
 		return err
 	}
 
+	// TODO(#sql-schema): we should resolve schema names for the old and new dbs.
+	// Temporary tables are the only thing at the moment with a different temporary schema.
+	// However, we should not / do not currently support moving schemas.
+	// As such, assume we are always moving with the same schame ID (public), except for temp tables.
+	newSchemaID := tableDesc.GetParentSchemaID()
+	if tableDesc.Temporary {
+		differentCatalog := prevDbDesc.ID != targetDbDesc.ID
+		differentSchema := newTn.ExplicitSchema && newTn.Schema() != "pg_temp" && newTn.Schema() != p.TemporarySchemaName()
+		if differentCatalog || differentSchema {
+			return pgerror.Newf(
+				pgcode.FeatureNotSupported,
+				"renaming a table to a different catalog or schema is currently not supported",
+			)
+		}
+	} else if newTn.ExplicitSchema && newTn.SchemaName != tree.PublicSchemaName {
+		// The optimizer guards against this, but just in case.
+		return pgerror.Newf(
+			pgcode.FeatureNotSupported,
+			"renaming a table into the temporary schema is not supported",
+		)
+	}
+
 	if err := p.CheckPrivilege(ctx, targetDbDesc, privilege.CREATE); err != nil {
 		return err
 	}
@@ -110,8 +134,13 @@ func (n *renameTableNode) startExec(params runParams) error {
 	tableDesc.SetName(newTn.Table())
 	tableDesc.ParentID = targetDbDesc.ID
 
-	newTbKey := sqlbase.MakePublicTableNameKey(ctx, params.ExecCfg().Settings,
-		targetDbDesc.ID, newTn.Table()).Key()
+	newTbKey := sqlbase.MakeObjectNameKey(
+		ctx,
+		params.ExecCfg().Settings,
+		targetDbDesc.ID,
+		newSchemaID,
+		newTn.Table(),
+	).Key()
 
 	if err := tableDesc.Validate(ctx, p.txn); err != nil {
 		return err
@@ -123,7 +152,8 @@ func (n *renameTableNode) startExec(params runParams) error {
 	renameDetails := sqlbase.TableDescriptor_NameInfo{
 		ParentID:       prevDbDesc.ID,
 		ParentSchemaID: parentSchemaID,
-		Name:           oldTn.Table()}
+		Name:           oldTn.Table(),
+	}
 	tableDesc.DrainingNames = append(tableDesc.DrainingNames, renameDetails)
 	if err := p.writeSchemaChange(
 		ctx, tableDesc, sqlbase.InvalidMutationID, tree.AsStringWithFQNames(n.n, params.Ann()),
