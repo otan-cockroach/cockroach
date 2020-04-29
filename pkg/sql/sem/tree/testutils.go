@@ -81,9 +81,9 @@ func SampleDatum(t *types.T) Datum {
 	case types.OidFamily:
 		return NewDOid(DInt(1009))
 	case types.GeographyFamily:
-		return NewDGeography(geo.NewGeography([]byte("\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x00\x00\x00\xf0\x3f")))
+		return NewDGeography(geo.MustParseGeography("POINT(1.0 1.0)"))
 	case types.GeometryFamily:
-		return NewDGeometry(geo.NewGeometry([]byte("\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x00\x00\x00\xf0\x3f")))
+		return NewDGeometry(geo.MustParseGeometry("POINT(1.0 1.0)"))
 	default:
 		panic(fmt.Sprintf("SampleDatum not implemented for %s", t))
 	}

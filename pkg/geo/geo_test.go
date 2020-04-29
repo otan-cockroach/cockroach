@@ -261,18 +261,20 @@ func TestClipEWKBByRect(t *testing.T) {
 			d.ScanArgs(t, "xmax", &xMax)
 			d.ScanArgs(t, "ymax", &yMax)
 			ewkb, err := geos.ClipEWKBByRect(
-				g.ewkb, float64(xMin), float64(yMin), float64(xMax), float64(yMax))
+				g.EWKB(), float64(xMin), float64(yMin), float64(xMax), float64(yMax))
 			if err != nil {
 				return err.Error()
 			}
+			so, err := SpatialObjectFromEWKB(ewkb)
+			require.NoError(t, err)
 			// TODO(sumeer):
 			// - add WKB to WKT and print exact output
 			// - expand test with more inputs
 			return fmt.Sprintf(
 				"%d => %d (srid: %d)",
-				len(g.ewkb),
+				len(g.EWKB()),
 				len(ewkb),
-				(&spatialObjectBase{ewkb: ewkb}).SRID(),
+				so.SRID,
 			)
 		default:
 			return fmt.Sprintf("unknown command: %s", d.Cmd)
