@@ -43,8 +43,10 @@ func initGeneratorBuiltins() {
 			panic("duplicate builtin: " + k)
 		}
 
-		if v.props.Volatility != tree.VolatilityVolatile {
-			panic(fmt.Sprintf("generator functions should all be volatile, found %v", v))
+		for _, ov := range v.overloads {
+			if ov.Volatility != tree.VolatilityVolatile {
+				panic(fmt.Sprintf("generator functions should all be volatile, found %v", v))
+			}
 		}
 		if v.props.Class != tree.GeneratorClass {
 			panic(fmt.Sprintf("generator functions should be marked with the tree.GeneratorClass "+
@@ -57,15 +59,13 @@ func initGeneratorBuiltins() {
 
 func genProps() tree.FunctionProperties {
 	return tree.FunctionProperties{
-		Volatility: tree.VolatilityVolatile,
-		Class:      tree.GeneratorClass,
-		Category:   categoryGenerator,
+		Class:    tree.GeneratorClass,
+		Category: categoryGenerator,
 	}
 }
 
 func genPropsWithLabels(returnLabels []string) tree.FunctionProperties {
 	return tree.FunctionProperties{
-		Volatility:   tree.VolatilityVolatile,
 		Class:        tree.GeneratorClass,
 		Category:     categoryGenerator,
 		ReturnLabels: returnLabels,

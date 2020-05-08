@@ -81,13 +81,15 @@ const (
 // such cases. Instead, we rely on clues like the category.
 func TestRuleFunctionAssumption(t *testing.T) {
 	for name := range norm.FoldFunctionWhitelist {
-		props, _ := builtins.GetBuiltinProperties(name)
+		props, overloads := builtins.GetBuiltinProperties(name)
 		if props == nil {
 			t.Errorf("could not find properties for function %s", name)
 			continue
 		}
-		if props.Volatility != tree.VolatilityImmutable {
-			t.Errorf("%s should not be folded because it is not immutable", name)
+		for _, overload := range overloads {
+			if overload.Volatility != tree.VolatilityImmutable {
+				t.Errorf("%s should not be folded because it is not immutable", name)
+			}
 		}
 		if props.Category == categorySystemInfo || props.Category == categoryDateAndTime {
 			switch name {

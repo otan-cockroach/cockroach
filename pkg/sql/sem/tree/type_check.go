@@ -810,7 +810,7 @@ func (sc *SemaContext) checkFunctionUsage(expr *FuncExpr, def *FunctionDefinitio
 		}
 		sc.Properties.Derived.SeenGenerator = true
 	}
-	if def.Volatility != VolatilityImmutable {
+	if expr.fn.Volatility != VolatilityImmutable {
 		if sc.Properties.required.rejectFlags&RejectNonImmutableFunctions != 0 {
 			// The code FeatureNotSupported is a bit misleading here,
 			// because we probably can't support the feature at all. However

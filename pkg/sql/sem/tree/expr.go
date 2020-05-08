@@ -1295,10 +1295,10 @@ func (node *FuncExpr) IsWindowFunctionApplication() bool {
 // Volatility returns the volatility of the given function.
 // See Volatility definition.
 func (node *FuncExpr) Volatility() Volatility {
-	if node.fnProps == nil {
+	if node.fn == nil {
 		return VolatilityImmutable
 	}
-	return node.fnProps.Volatility
+	return node.fn.Volatility
 }
 
 // IsDistSQLBlacklist returns whether the function is not supported by DistSQL.

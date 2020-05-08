@@ -1388,7 +1388,7 @@ func BuildSharedProps(e opt.Expr, shared *props.Shared) {
 		}
 
 	case *FunctionExpr:
-		if t.Properties.Volatility != tree.VolatilityImmutable {
+		if t.Overload.Volatility != tree.VolatilityImmutable {
 			// Non-immutable functions can return different value on each call.
 			shared.CanHaveSideEffects = true
 		}

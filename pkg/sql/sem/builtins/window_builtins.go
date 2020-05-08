@@ -27,8 +27,10 @@ func initWindowBuiltins() {
 			panic("duplicate builtin: " + k)
 		}
 
-		if v.props.Volatility != tree.VolatilityVolatile {
-			panic(fmt.Sprintf("%s: window functions should all be volatile, found %v", k, v))
+		for _, overload := range v.overloads {
+			if overload.Volatility != tree.VolatilityVolatile {
+				panic(fmt.Sprintf("%s: window functions should all be volatile, found %v", k, v))
+			}
 		}
 		if v.props.Class != tree.WindowClass {
 			panic(fmt.Sprintf("%s: window functions should be marked with the tree.WindowClass "+
