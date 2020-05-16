@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
+	"github.com/mmcloughlin/geohash"
 	"github.com/twpayne/go-geom/encoding/ewkb"
 	"github.com/twpayne/go-geom/encoding/geojson"
 	"github.com/twpayne/go-geom/encoding/kml"
@@ -32,6 +33,30 @@ func EWKBToWKT(b geopb.EWKB) (geopb.WKT, error) {
 	}
 	ret, err := wkt.Marshal(t)
 	return geopb.WKT(ret), err
+}
+
+// EWKBToGeoHash transforms a given EWKB to a GeoHash.
+func EWKBToGeoHash(b geopb.EWKB, precision int) (string, error) {
+	if precision > 12 || precision < 0 {
+		precision = 12
+	}
+
+	t, err := ewkb.Unmarshal([]byte(b))
+	if err != nil {
+		return "", err
+	}
+	bbox, err := BoundingBoxFromGeom(t)
+	if err != nil {
+		return "", err
+	}
+	lat, lng := (geohash.Box{
+		MinLat: bbox.MinY,
+		MaxLat: bbox.MaxY,
+		MinLng: bbox.MinX,
+		MaxLng: bbox.MaxX,
+	}).Center()
+	fmt.Printf("lat lng: %f %f\n", lat, lng)
+	return geohash.EncodeWithPrecision(lat, lng, uint(precision)), nil
 }
 
 // EWKBToEWKT transforms a given EWKB to EWKT.

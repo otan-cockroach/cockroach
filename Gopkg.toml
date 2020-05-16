@@ -191,3 +191,7 @@ ignored = [
 [[constraint]]
   name = "github.com/Azure/azure-sdk-for-go"
   version = "33.0.0"
+
+[[constraint]]
+  name = "github.com/mmcloughlin/geohash"
+  version = "0.9.0"

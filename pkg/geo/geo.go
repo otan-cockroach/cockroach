@@ -17,6 +17,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
 	"github.com/cockroachdb/errors"
 	"github.com/golang/geo/s2"
+	"github.com/mmcloughlin/geohash"
 	"github.com/twpayne/go-geom"
 	"github.com/twpayne/go-geom/encoding/ewkb"
 )
@@ -65,6 +66,55 @@ func MustParseGeometry(str string) *Geometry {
 		panic(err)
 	}
 	return g
+}
+
+// amendGeoHashPrecision amends a GeoHash precision to a unit we can use.
+func amendGeoHashPrecision(str string, precision int) int {
+	// Only allows up to 12 units of precision.
+	// Fix up negative numbers.
+	if precision > 12 || precision < 0 {
+		precision = 12
+	}
+	if precision > len(str) {
+		precision = len(str)
+	}
+	return precision
+}
+
+// GeometryPointFromGeoHash converts a geohash's center into a Geometry Point.
+func GeometryPointFromGeoHash(str string, precision int) (*Geometry, error) {
+	precision = amendGeoHashPrecision(str, precision)
+	lat, lng := geohash.DecodeCenter(str[:precision])
+	g, err := spatialObjectFromGeom(geom.NewPointFlat(geom.XY, []float64{lng, lat}))
+	if err != nil {
+		return nil, err
+	}
+	return NewGeometry(g), nil
+}
+
+// GeometryPolygonFromGeoHash converts a geohash into a Geometry Polygon using the
+// bounding box as the guide.
+func GeometryPolygonFromGeoHash(str string, precision int) (*Geometry, error) {
+	precision = amendGeoHashPrecision(str, precision)
+	box := geohash.BoundingBox(str[:precision])
+	// PostGIS arranges the coordinates in CW order.
+	g, err := spatialObjectFromGeom(
+		geom.NewPolygonFlat(
+			geom.XY,
+			[]float64{
+				box.MinLng, box.MinLat,
+				box.MinLng, box.MaxLat,
+				box.MaxLng, box.MaxLat,
+				box.MaxLng, box.MinLat,
+				box.MinLng, box.MinLat,
+			},
+			[]int{10},
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return NewGeometry(g), nil
 }
 
 // ParseGeometryFromEWKT parses the EWKT into a Geometry.

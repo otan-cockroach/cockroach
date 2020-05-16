@@ -11,6 +11,7 @@
 package geo
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
@@ -31,6 +32,30 @@ func TestEWKBToWKT(t *testing.T) {
 			so, err := parseEWKT(tc.ewkt, geopb.DefaultGeometrySRID, DefaultSRIDIsHint)
 			require.NoError(t, err)
 			encoded, err := EWKBToWKT(so.EWKB)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, encoded)
+		})
+	}
+}
+
+func TestEWKBToGeoHash(t *testing.T) {
+	testCases := []struct {
+		ewkt      geopb.EWKT
+		precision int
+		expected  string
+	}{
+		{"POINT(1.0 2.0)", 12, "s02equ04ven0"},
+		{"POINT(1.0 2.0)", 4, "s02e"},
+		{"LINESTRING(1.0 2.0, 3.0 4.0)", 4, "s0"},
+		{"POLYGON((0.0 0.0, 1.0 0.0, 1.0 1.0, 0.0 1.0, 0.0 0.0))", 4, ""},
+		{"POLYGON((0.0 0.0, 1.0 0.0, 1.0 1.0, 0.0 1.0, 0.0 0.0))", 12, ""},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%s(%d)", tc.ewkt, tc.precision), func(t *testing.T) {
+			so, err := parseEWKT(tc.ewkt, geopb.DefaultGeometrySRID, DefaultSRIDIsHint)
+			require.NoError(t, err)
+			encoded, err := EWKBToGeoHash(so.EWKB, tc.precision)
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, encoded)
 		})
