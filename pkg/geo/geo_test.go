@@ -379,3 +379,55 @@ func TestClipEWKBByRect(t *testing.T) {
 		}
 	})
 }
+
+func TestGeometryPointFromGeoHash(t *testing.T) {
+	testCases := []struct {
+		geoHash   string
+		precision int
+		expected  *Geometry
+	}{
+		{"9qqj7nmxncgyy4d0dbxqz0", 20, MustParseGeometry("POINT(-115.1728160865604877471923828125 36.114645944908261299133378125)")},
+		{"9qqj7nmxncgyy4d0dbxqz0", 12, MustParseGeometry("POINT(-115.1728160865604877471923828125 36.114645944908261299133378125)")},
+		{"9qqj7nmxncgyy4d0dbxqz0", 4, MustParseGeometry("POINT(-115.13671875 36.123046875)")},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%s (%d)", tc.geoHash, tc.precision), func(t *testing.T) {
+			g, err := GeometryPointFromGeoHash(tc.geoHash, tc.precision)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, g)
+		})
+	}
+}
+
+func TestGeometryPolygonFromGeoHash(t *testing.T) {
+	testCases := []struct {
+		geoHash   string
+		precision int
+		expected  *Geometry
+	}{
+		{
+			"9qqj7nmxncgyy4d0dbxqz0",
+			4,
+			MustParseGeometry("POLYGON((-115.3125 36.03515625,-115.3125 36.2109375,-114.9609375 36.2109375,-114.9609375 36.03515625,-115.3125 36.03515625))"),
+		},
+		{
+			"9qqj7nmxncgyy4d0dbxqz0",
+			12,
+			MustParseGeometry("POLYGON ((-115.17281625419855 36.11464586108923, -115.17281625419855 36.11464602872729, -115.17281591892242 36.11464602872729, -115.17281591892242 36.11464586108923, -115.17281625419855 36.11464586108923))"),
+		},
+		{
+			"9qqj7nmxncgyy4d0dbxqz0",
+			20,
+			MustParseGeometry("POLYGON ((-115.17281625419855 36.11464586108923, -115.17281625419855 36.11464602872729, -115.17281591892242 36.11464602872729, -115.17281591892242 36.11464586108923, -115.17281625419855 36.11464586108923))"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%s (%d)", tc.geoHash, tc.precision), func(t *testing.T) {
+			g, err := GeometryPolygonFromGeoHash(tc.geoHash, tc.precision)
+			require.NoError(t, err)
+			require.Equal(t, tc.expected, g)
+		})
+	}
+}
