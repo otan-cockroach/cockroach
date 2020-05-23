@@ -22,6 +22,10 @@ package colexec
 import (
 	"context"
 
+<<<<<<< HEAD
+=======
+	"github.com/cockroachdb/apd/v2"
+>>>>>>> 4ffd9acf15... *: switch to go.mod
 	"github.com/cockroachdb/cockroach/pkg/col/coldata"
 	"github.com/cockroachdb/cockroach/pkg/col/typeconv"
 	"github.com/cockroachdb/cockroach/pkg/sql/colexec/execgen"
@@ -35,6 +39,27 @@ import (
 // {{/*
 // Declarations to make the template compile properly.
 
+<<<<<<< HEAD
+=======
+// Dummy import to pull in "bytes" package.
+var _ bytes.Buffer
+
+// Dummy import to pull in "apd/v2" package.
+var _ apd.Decimal
+
+// Dummy import to pull in "tree" package.
+var _ tree.Datum
+
+// Dummy import to pull in "math" package.
+var _ = math.MaxInt64
+
+// Dummy import to pull in "time" package.
+var _ time.Time
+
+// Dummy import to pull in "duration" package.
+var _ duration.Duration
+
+>>>>>>> 4ffd9acf15... *: switch to go.mod
 // _LEFT_CANONICAL_TYPE_FAMILY is the template variable.
 const _LEFT_CANONICAL_TYPE_FAMILY = types.UnknownFamily
 

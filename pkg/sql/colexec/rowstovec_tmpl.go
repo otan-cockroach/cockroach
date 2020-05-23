@@ -22,6 +22,10 @@ package colexec
 import (
 	"fmt"
 
+<<<<<<< HEAD
+=======
+	"github.com/cockroachdb/apd/v2"
+>>>>>>> 4ffd9acf15... *: switch to go.mod
 	"github.com/cockroachdb/cockroach/pkg/col/coldata"
 	"github.com/cockroachdb/cockroach/pkg/col/typeconv"
 	"github.com/cockroachdb/cockroach/pkg/sql/colexec/execgen"
@@ -34,6 +38,18 @@ import (
 
 // {{/*
 
+<<<<<<< HEAD
+=======
+// Dummy import to pull in "apd/v2" package.
+var _ apd.Decimal
+
+// Dummy import to pull in "time" package.
+var _ time.Time
+
+// Dummy import to pull in "duration" package.
+var _ duration.Duration
+
+>>>>>>> 4ffd9acf15... *: switch to go.mod
 // _CANONICAL_TYPE_FAMILY is the template variable.
 const _CANONICAL_TYPE_FAMILY = types.UnknownFamily
 
