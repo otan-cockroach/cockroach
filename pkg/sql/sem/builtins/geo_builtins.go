@@ -50,8 +50,8 @@ const spheroidDistanceMessage = `"\n\nWhen operating on a spheroid, this functio
 	`This follows observed PostGIS behavior.`
 
 const (
-	defaultGeoJSONDecimalDigits = 9
-	defaultWKTDecimalDigits     = 15
+	defaultGeoJSONDecimalDigits = -1
+	defaultWKTDecimalDigits     = -1
 )
 
 // infoBuilder is used to build a detailed info string that is consistent between
@@ -721,7 +721,7 @@ var geoBuiltins = map[string]builtinDefinition{
 			},
 			types.String,
 			infoBuilder{
-				info: fmt.Sprintf("Returns the WKT representation of a given Geometry. A maximum of %d decimal digits is used.", defaultWKTDecimalDigits),
+				info: "Returns the WKT representation of a given Geometry.",
 			},
 			tree.VolatilityImmutable,
 		),
@@ -749,7 +749,7 @@ var geoBuiltins = map[string]builtinDefinition{
 			},
 			types.String,
 			infoBuilder{
-				info: fmt.Sprintf("Returns the WKT representation of a given Geography. A default of %d decimal digits is used.", defaultWKTDecimalDigits),
+				info: "Returns the WKT representation of a given Geography.",
 			},
 			tree.VolatilityImmutable,
 		),
@@ -780,7 +780,7 @@ var geoBuiltins = map[string]builtinDefinition{
 			},
 			types.String,
 			infoBuilder{
-				info: fmt.Sprintf("Returns the EWKT representation of a given Geometry. A maximum of %d decimal digits is used.", defaultWKTDecimalDigits),
+				info: "Returns the WKT representation of a given Geometry.",
 			},
 			tree.VolatilityImmutable,
 		),
@@ -808,7 +808,7 @@ var geoBuiltins = map[string]builtinDefinition{
 			},
 			types.String,
 			infoBuilder{
-				info: fmt.Sprintf("Returns the EWKT representation of a given Geography. A default of %d decimal digits is used.", defaultWKTDecimalDigits),
+				info: "Returns the WKT representation of a given Geography.",
 			},
 			tree.VolatilityImmutable,
 		),
@@ -1044,10 +1044,7 @@ var geoBuiltins = map[string]builtinDefinition{
 			},
 			types.String,
 			infoBuilder{
-				info: fmt.Sprintf(
-					"Returns the GeoJSON representation of a given Geometry. Coordinates have a maximum of %d decimal digits.",
-					defaultGeoJSONDecimalDigits,
-				),
+				info: "Returns the GeoJSON representation of a given Geometry.",
 			},
 			tree.VolatilityImmutable,
 		),
@@ -1101,10 +1098,7 @@ Options is a flag that can be bitmasked. The options are:
 			},
 			types.String,
 			infoBuilder{
-				info: fmt.Sprintf(
-					"Returns the GeoJSON representation of a given Geography. Coordinates have a maximum of %d decimal digits.",
-					defaultGeoJSONDecimalDigits,
-				),
+				info: "Returns the GeoJSON representation of a given Geometry.",
 			},
 			tree.VolatilityImmutable,
 		),
