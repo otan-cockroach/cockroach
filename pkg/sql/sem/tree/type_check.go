@@ -13,6 +13,7 @@ package tree
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"strings"
 
 	"github.com/cockroachdb/cockroach/pkg/server/telemetry"
@@ -813,12 +814,12 @@ func (sc *SemaContext) checkFunctionUsage(expr *FuncExpr, def *FunctionDefinitio
 	} else {
 		// If it is an aggregate function *not used OVER a window*, then
 		// we have an aggregation.
-		if def.Class == AggregateClass {
+		if def.Class == AggregateClass || def.Class == ContainsAggregateClass {
 			if sc.Properties.Derived.inFuncExpr &&
 				sc.Properties.required.rejectFlags&RejectNestedAggregates != 0 {
 				return NewAggInAggError()
 			}
-			if sc.Properties.required.rejectFlags&RejectAggregates != 0 {
+			if sc.Properties.required.rejectFlags&RejectAggregates != 0 && def.Class == AggregateClass {
 				return NewInvalidFunctionUsageError(AggregateClass, sc.Properties.required.context)
 			}
 			sc.Properties.Derived.SeenAggregate = true
@@ -929,7 +930,7 @@ func (expr *FuncExpr) TypeCheck(
 	// chooses the overload with preferred type for the given category. For
 	// example, float8 is the preferred type for the numeric category in Postgres.
 	// To match Postgres' behavior, we should add that logic here too.
-	if !def.NullableArgs && def.FunctionProperties.Class == AggregateClass {
+	if !def.NullableArgs && (def.FunctionProperties.Class == AggregateClass || def.FunctionProperties.Class == ContainsAggregateClass) {
 		for i := range typedSubExprs {
 			if typedSubExprs[i].ResolvedType().Family() == types.UnknownFamily {
 				var filtered []overloadImpl
@@ -958,7 +959,7 @@ func (expr *FuncExpr) TypeCheck(
 	// NULL arguments, the function isn't a generator or aggregate builtin, and
 	// NULL is given as an argument.
 	if !def.NullableArgs && def.FunctionProperties.Class != GeneratorClass &&
-		def.FunctionProperties.Class != AggregateClass {
+		def.FunctionProperties.Class != AggregateClass && def.FunctionProperties.Class != ContainsAggregateClass {
 		for _, expr := range typedSubExprs {
 			if expr.ResolvedType().Family() == types.UnknownFamily {
 				return DNull, nil
@@ -1006,7 +1007,7 @@ func (expr *FuncExpr) TypeCheck(
 	}
 
 	if expr.Filter != nil {
-		if def.Class != AggregateClass {
+		if def.Class != AggregateClass && def.Class != ContainsAggregateClass {
 			// Same error message as Postgres. If we have a window function, only
 			// aggregates accept a FILTER clause.
 			return nil, pgerror.Newf(pgcode.WrongObjectType,
@@ -1232,6 +1233,7 @@ func (expr *ColumnItem) TypeCheck(
 	if _, ok := presetTypesForTesting[name]; ok {
 		return expr, nil
 	}
+	debug.PrintStack()
 	return nil, pgerror.Newf(pgcode.UndefinedColumn,
 		"column %q does not exist", ErrString(expr))
 }

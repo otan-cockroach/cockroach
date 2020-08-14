@@ -1313,6 +1313,48 @@ Negative azimuth values and values greater than 2π (360 degrees) are supported.
 	),
 
 	//
+	// Aggregations
+	//
+	"st_makeline": makeBuiltin(
+		tree.FunctionProperties{
+			Class:        tree.ContainsAggregateClass,
+			NullableArgs: true,
+		},
+		geometryOverload2(
+			func(ctx *tree.EvalContext, a *tree.DGeometry, b *tree.DGeometry) (tree.Datum, error) {
+				agg := &stMakeLineAgg{}
+				err := agg.Add(ctx.Context, a)
+				if err != nil {
+					return nil, err
+				}
+				err = agg.Add(ctx.Context, b)
+				if err != nil {
+					return nil, err
+				}
+				return agg.Result()
+			},
+			types.Geometry,
+			infoBuilder{
+				info: "Forms a LineString from Point, MultiPoint or LineStrings. Other shapes will be ignored.",
+			},
+			tree.VolatilityImmutable,
+		),
+		makeAggOverload(
+			[]*types.T{types.Geometry},
+			types.Geometry,
+			func(
+				params []*types.T, evalCtx *tree.EvalContext, arguments tree.Datums,
+			) tree.AggregateFunc {
+				return &stMakeLineAgg{}
+			},
+			infoBuilder{
+				info: "Forms a LineString from Point, MultiPoint or LineStrings. Other shapes will be ignored.",
+			}.String(),
+			tree.VolatilityImmutable,
+		),
+	),
+
+	//
 	// Unary functions.
 	//
 

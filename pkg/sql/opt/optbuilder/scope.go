@@ -920,6 +920,18 @@ func (s *scope) VisitPre(expr tree.Expr) (recurse bool, newExpr tree.Expr) {
 			break
 		}
 
+		if isContainsAggregate(def) && t.WindowDef == nil {
+			typedFunc, err := tree.TypeCheck(s.builder.ctx, expr, s.builder.semaCtx, types.Any)
+			if err != nil {
+				panic(err)
+			}
+			fmt.Printf("contains aggregate! overload; %#v\n", typedFunc.(*tree.FuncExpr).ResolvedOverload())
+			if typedFunc.(*tree.FuncExpr).ResolvedOverload().AggregateFunc != nil {
+				expr = s.replaceAggregate(t, def)
+				break
+			}
+		}
+
 		if t.WindowDef != nil {
 			expr = s.replaceWindowFn(t, def)
 			break

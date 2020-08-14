@@ -49,7 +49,7 @@ func init() {
 			continue
 		}
 		AllBuiltinNames = append(AllBuiltinNames, name)
-		if def.props.Class == tree.AggregateClass {
+		if def.props.Class == tree.AggregateClass || def.props.Class == tree.ContainsAggregateClass {
 			AllAggregateBuiltinNames = append(AllAggregateBuiltinNames, name)
 		} else if def.props.Class == tree.WindowClass {
 			AllWindowBuiltinNames = append(AllWindowBuiltinNames, name)
