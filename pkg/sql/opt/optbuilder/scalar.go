@@ -489,9 +489,9 @@ func (b *Builder) buildFunction(
 		panic(err)
 	}
 
-	if isAggregate(def) {
+	/*	if isAggregate(def) {
 		panic(errors.AssertionFailedf("aggregate function should have been replaced"))
-	}
+	}*/
 
 	if isWindow(def) {
 		panic(errors.AssertionFailedf("window function should have been replaced"))

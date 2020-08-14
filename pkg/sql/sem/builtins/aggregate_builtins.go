@@ -44,16 +44,18 @@ func initAggregateBuiltins() {
 			panic(errors.AssertionFailedf("%s: aggregate functions should be marked with the tree.AggregateClass "+
 				"function class, found %v", k, v))
 		}
-		for _, a := range v.overloads {
-			if a.AggregateFunc == nil {
-				panic(errors.AssertionFailedf("%s: aggregate functions should have tree.AggregateFunc constructors, "+
-					"found %v", k, a))
+		/*
+			for _, a := range v.overloads {
+				if a.AggregateFunc == nil {
+					panic(errors.AssertionFailedf("%s: aggregate functions should have tree.AggregateFunc constructors, "+
+						"found %v", k, a))
+				}
+				if a.WindowFunc == nil {
+					panic(errors.AssertionFailedf("%s: aggregate functions should have tree.WindowFunc constructors, "+
+						"found %v", k, a))
+				}
 			}
-			if a.WindowFunc == nil {
-				panic(errors.AssertionFailedf("%s: aggregate functions should have tree.WindowFunc constructors, "+
-					"found %v", k, a))
-			}
-		}
+		*/
 
 		builtins[k] = v
 	}

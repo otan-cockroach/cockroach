@@ -916,7 +916,20 @@ func (s *scope) VisitPre(expr tree.Expr) (recurse bool, newExpr tree.Expr) {
 		}
 
 		if isAggregate(def) && t.WindowDef == nil {
-			expr = s.replaceAggregate(t, def)
+			doIt := true
+			if strings.EqualFold(def.Name, "st_makeline") {
+				typedFunc, err := tree.TypeCheck(s.builder.ctx, expr, s.builder.semaCtx, types.Any)
+				if err != nil {
+					panic(err)
+				}
+
+				if typedFunc.(*tree.FuncExpr).ResolvedOverload().AggregateFunc == nil {
+					doIt = false
+				}
+			}
+			if doIt {
+				expr = s.replaceAggregate(t, def)
+			}
 			break
 		}
 
