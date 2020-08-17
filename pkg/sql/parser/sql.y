@@ -1131,7 +1131,7 @@ func (u *sqlSymUnion) executorType() tree.ScheduledJobExecutorType {
 %type <tree.Persistence> opt_persistence_temp_table
 %type <bool> role_or_group_or_user
 
-%type <tree.Expr>  opt_cron_expr cron_expr opt_description sconst_or_placeholder
+%type <tree.Expr> cron_expr opt_description sconst_or_placeholder
 %type <*tree.FullBackupClause> opt_full_backup_clause
 %type <tree.ScheduleState> schedule_state
 %type <tree.ScheduledJobExecutorType> opt_schedule_executor_type
@@ -2290,13 +2290,6 @@ cron_expr:
   {
     $$.val = $2.expr()
   }
-
-opt_cron_expr:
-  RECURRING NEVER
-  {
-    $$.val = nil
-  }
-| cron_expr
 
 opt_full_backup_clause:
   FULL BACKUP sconst_or_placeholder
@@ -9163,7 +9156,7 @@ a_expr:
   {
     $$.val = &tree.FuncExpr{Func: tree.WrapFunction("not_similar_to_escape"), Exprs: tree.Exprs{$1.expr(), $5.expr(), $7.expr()}}
   }
-| a_expr '~' a_expr
+| a_expr '~' b_expr
   {
     $$.val = &tree.ComparisonExpr{Operator: tree.RegMatch, Left: $1.expr(), Right: $3.expr()}
   }
@@ -9548,6 +9541,10 @@ d_expr:
 | '(' a_expr ')'
   {
     $$.val = &tree.ParenExpr{Expr: $2.expr()}
+  }
+| d_expr '@' d_expr
+  {
+    $$.val = &tree.ComparisonExpr{Operator: tree.RegMatch, Left: $1.expr(), Right: $3.expr()}
   }
 | func_expr
 | select_with_parens %prec UMINUS
