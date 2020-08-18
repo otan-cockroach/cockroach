@@ -385,6 +385,7 @@ const (
 	JSONSomeExists
 	JSONAllExists
 	Overlaps
+	GeoWithin
 
 	// The following operators will always be used with an associated SubOperator.
 	// If Go had algebraic data types they would be defined in a self-contained
@@ -439,6 +440,7 @@ var comparisonOpName = [...]string{
 	Any:               "ANY",
 	Some:              "SOME",
 	All:               "ALL",
+	GeoWithin:         "@",
 }
 
 func (i ComparisonOperator) String() string {

@@ -691,6 +691,8 @@ func (b *Builder) constructComparison(
 		return b.factory.ConstructJsonSomeExists(left, right)
 	case tree.Overlaps:
 		return b.factory.ConstructOverlaps(left, right)
+	case tree.GeoWithin:
+		return b.factory.ConstructGeoWithin(left, right)
 	}
 	panic(errors.AssertionFailedf("unhandled comparison operator: %s", log.Safe(cmp)))
 }

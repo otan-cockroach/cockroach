@@ -140,6 +140,7 @@ var ComparisonOpReverseMap = map[Operator]tree.ComparisonOperator{
 	JsonSomeExistsOp: tree.JSONSomeExists,
 	JsonAllExistsOp:  tree.JSONAllExists,
 	OverlapsOp:       tree.Overlaps,
+	GeoWithinOp:      tree.GeoWithin,
 }
 
 // BinaryOpReverseMap maps from an optimizer operator type to a semantic tree
@@ -258,7 +259,7 @@ func ScalarOperatorTransmitsNulls(op Operator) bool {
 	case BitandOp, BitorOp, BitxorOp, PlusOp, MinusOp, MultOp, DivOp, FloorDivOp,
 		ModOp, PowOp, EqOp, NeOp, LtOp, GtOp, LeOp, GeOp, LikeOp, NotLikeOp, ILikeOp,
 		NotILikeOp, SimilarToOp, NotSimilarToOp, RegMatchOp, NotRegMatchOp, RegIMatchOp,
-		NotRegIMatchOp, ConstOp:
+		NotRegIMatchOp, ConstOp, GeoWithinOp:
 		return true
 
 	default:
@@ -273,7 +274,7 @@ func BoolOperatorRequiresNotNullArgs(op Operator) bool {
 	case
 		EqOp, LtOp, LeOp, GtOp, GeOp, NeOp,
 		LikeOp, NotLikeOp, ILikeOp, NotILikeOp, SimilarToOp, NotSimilarToOp,
-		RegMatchOp, NotRegMatchOp, RegIMatchOp, NotRegIMatchOp:
+		RegMatchOp, NotRegMatchOp, RegIMatchOp, NotRegIMatchOp, GeoWithinOp:
 		return true
 	}
 	return false

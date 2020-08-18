@@ -784,7 +784,7 @@ func ExprIsNeverNull(e opt.ScalarExpr, notNullCols opt.ColSet) bool {
 		*NotRegMatchExpr, *RegIMatchExpr, *NotRegIMatchExpr, *ContainsExpr, *JsonExistsExpr,
 		*JsonAllExistsExpr, *JsonSomeExistsExpr, *AnyScalarExpr, *BitandExpr, *BitorExpr, *BitxorExpr,
 		*PlusExpr, *MinusExpr, *MultExpr, *DivExpr, *FloorDivExpr, *ModExpr, *PowExpr, *ConcatExpr,
-		*LShiftExpr, *RShiftExpr, *WhenExpr:
+		*LShiftExpr, *RShiftExpr, *WhenExpr, *GeoWithinExpr:
 		return ExprIsNeverNull(t.Child(0).(opt.ScalarExpr), notNullCols) &&
 			ExprIsNeverNull(t.Child(1).(opt.ScalarExpr), notNullCols)
 

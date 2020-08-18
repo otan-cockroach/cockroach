@@ -1015,7 +1015,7 @@ func (u *sqlSymUnion) executorType() tree.ScheduledJobExecutorType {
 %type <*tree.IndexFlags> opt_index_flags
 %type <*tree.IndexFlags> index_flags_param
 %type <*tree.IndexFlags> index_flags_param_list
-%type <tree.Expr> a_expr b_expr c_expr d_expr typed_literal
+%type <tree.Expr> a_expr b_expr c_expr d_expr e_expr typed_literal
 %type <tree.Expr> substr_from substr_for
 %type <tree.Expr> in_expr
 %type <tree.Expr> having_clause
@@ -9240,6 +9240,10 @@ a_expr:
   {
     $$.val = &tree.ComparisonExpr{Operator: tree.RegMatch, Left: $1.expr(), Right: $3.expr()}
   }
+| e_expr '@' e_expr
+  {
+    $$.val = &tree.ComparisonExpr{Operator: tree.GeoWithin, Left: $1.expr(), Right: $3.expr()}
+  }
 | a_expr NOT_REGMATCH a_expr
   {
     $$.val = &tree.ComparisonExpr{Operator: tree.NotRegMatch, Left: $1.expr(), Right: $3.expr()}
@@ -9510,6 +9514,30 @@ c_expr:
     $$.val = &tree.Subquery{Select: $2.selectStmt(), Exists: true}
   }
 
+// Productions that involve '@' symbols, to avoid colliding with '@'
+// as an operator.
+d_expr:
+  e_expr
+| column_path_with_star
+  {
+    $$.val = tree.Expr($1.unresolvedName())
+  }
+| '@' iconst64
+  {
+    colNum := $2.int64()
+    if colNum < 1 || colNum > int64(MaxInt) {
+      sqllex.Error(fmt.Sprintf("invalid column ordinal: @%d", colNum))
+      return 1
+    }
+    $$.val = tree.NewOrdinalReference(int(colNum-1))
+  }
+| '(' a_expr ')' '.' '@' ICONST
+  {
+    idx, err := $6.numVal().AsInt32()
+    if err != nil || idx <= 0 { return setErr(sqllex, err) }
+    $$.val = &tree.ColumnAccessExpr{Expr: $2.expr(), ByIndex: true, ColIndex: int(idx-1)}
+  }
+
 // Productions that can be followed by a postfix operator.
 //
 // Currently we support array indexing (see c_expr above).
@@ -9539,8 +9567,7 @@ c_expr:
 //     other_subscript:
 //        field_access_op
 //     |  array_subscripts
-
-d_expr:
+e_expr:
   ICONST
   {
     $$.val = $1.numVal()
@@ -9584,19 +9611,6 @@ d_expr:
   {
     $$.val = tree.DNull
   }
-| column_path_with_star
-  {
-    $$.val = tree.Expr($1.unresolvedName())
-  }
-| '@' iconst64
-  {
-    colNum := $2.int64()
-    if colNum < 1 || colNum > int64(MaxInt) {
-      sqllex.Error(fmt.Sprintf("invalid column ordinal: @%d", colNum))
-      return 1
-    }
-    $$.val = tree.NewOrdinalReference(int(colNum-1))
-  }
 | PLACEHOLDER
   {
     p := $1.placeholder()
@@ -9611,12 +9625,6 @@ d_expr:
 | '(' a_expr ')' '.' unrestricted_name
   {
     $$.val = &tree.ColumnAccessExpr{Expr: $2.expr(), ColName: $5 }
-  }
-| '(' a_expr ')' '.' '@' ICONST
-  {
-    idx, err := $6.numVal().AsInt32()
-    if err != nil || idx <= 0 { return setErr(sqllex, err) }
-    $$.val = &tree.ColumnAccessExpr{Expr: $2.expr(), ByIndex: true, ColIndex: int(idx-1)}
   }
 | '(' a_expr ')'
   {
