@@ -783,6 +783,7 @@ func TestParse(t *testing.T) {
 		{`SELECT b && c`},
 		{`SELECT |/a`},
 		{`SELECT ||/a`},
+		{`SELECT (a) @ (b)`},
 
 		{`SELECT 1 FROM t`},
 		{`SELECT 1, 2 FROM t`},

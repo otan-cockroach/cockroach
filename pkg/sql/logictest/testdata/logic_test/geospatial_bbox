@@ -96,30 +96,32 @@ box from origin to 1 1  NULL                    NULL  NULL  NULL   NULL
 box from origin to 1 1  box at origin           true  true  true   false
 box from origin to 1 1  box from origin to 1 1  true  true  true   true
 
-query TTBBBB
+query TTBBBBBB
 SELECT
   geometry_tbl.dsc,
   box2d_tbl.dsc,
   geometry_tbl.g && box2d_tbl.b,
   box2d_tbl.b && geometry_tbl.g,
   geometry_tbl.g ~ box2d_tbl.b,
-  box2d_tbl.b ~ geometry_tbl.g
+  box2d_tbl.b ~ geometry_tbl.g,
+  (geometry_tbl.g) @ (box2d_tbl.b),
+  (box2d_tbl.b) @ (geometry_tbl.g)
 FROM geometry_tbl
 JOIN box2d_tbl ON (1=1)
 ORDER BY geometry_tbl.dsc, box2d_tbl.dsc
 ----
-NULL                           NULL                    NULL   NULL   NULL   NULL
-NULL                           box at origin           NULL   NULL   NULL   NULL
-NULL                           box from origin to 1 1  NULL   NULL   NULL   NULL
-empty point                    NULL                    NULL   NULL   NULL   NULL
-empty point                    box at origin           false  false  false  false
-empty point                    box from origin to 1 1  false  false  false  false
-linestring from origin to 1 1  NULL                    NULL   NULL   NULL   NULL
-linestring from origin to 1 1  box at origin           true   true   true   false
-linestring from origin to 1 1  box from origin to 1 1  true   true   true   true
-point 0.5 0.5                  NULL                    NULL   NULL   NULL   NULL
-point 0.5 0.5                  box at origin           false  false  false  false
-point 0.5 0.5                  box from origin to 1 1  true   true   false  true
+NULL                           NULL                    NULL   NULL   NULL   NULL   NULL   NULL
+NULL                           box at origin           NULL   NULL   NULL   NULL   NULL   NULL
+NULL                           box from origin to 1 1  NULL   NULL   NULL   NULL   NULL   NULL
+empty point                    NULL                    NULL   NULL   NULL   NULL   NULL   NULL
+empty point                    box at origin           false  false  false  false  false  false
+empty point                    box from origin to 1 1  false  false  false  false  false  false
+linestring from origin to 1 1  NULL                    NULL   NULL   NULL   NULL   NULL   NULL
+linestring from origin to 1 1  box at origin           true   true   true   false  false  true
+linestring from origin to 1 1  box from origin to 1 1  true   true   true   true   true   true
+point 0.5 0.5                  NULL                    NULL   NULL   NULL   NULL   NULL   NULL
+point 0.5 0.5                  box at origin           false  false  false  false  false  false
+point 0.5 0.5                  box from origin to 1 1  true   true   false  true   true   false
 
 subtest st_combinebbox
 

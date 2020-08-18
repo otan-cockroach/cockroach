@@ -345,6 +345,14 @@
 <tr><td>jsonb <code>?|</code> <a href="string.html">string[]</a></td><td><a href="bool.html">bool</a></td></tr>
 </tbody></table>
 <table><thead>
+<tr><td><code>@</code></td><td>Return</td></tr>
+</thead><tbody>
+<tr><td>box2d <code>@</code> box2d</td><td><a href="bool.html">bool</a></td></tr>
+<tr><td>box2d <code>@</code> geometry</td><td><a href="bool.html">bool</a></td></tr>
+<tr><td>geometry <code>@</code> box2d</td><td><a href="bool.html">bool</a></td></tr>
+<tr><td>geometry <code>@</code> geometry</td><td><a href="bool.html">bool</a></td></tr>
+</tbody></table>
+<table><thead>
 <tr><td><code>@></code></td><td>Return</td></tr>
 </thead><tbody>
 <tr><td>anyelement <code>@></code> anyelement</td><td><a href="bool.html">bool</a></td></tr>

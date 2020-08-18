@@ -2524,6 +2524,11 @@ var CmpOps = cmpOpFixups(map[ComparisonOperator]cmpOpOverload{
 			},
 		)...,
 	),
+	GeoWithin: makeBox2DComparisonOperators(
+		func(lhs, rhs *geo.CartesianBoundingBox) bool {
+			return rhs.Covers(lhs)
+		},
+	),
 })
 
 func makeBox2DComparisonOperators(op func(lhs, rhs *geo.CartesianBoundingBox) bool) cmpOpOverload {
