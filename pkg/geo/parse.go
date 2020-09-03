@@ -172,6 +172,7 @@ func parseEWKT(
 	if err != nil {
 		return geopb.SpatialObject{}, err
 	}
+	fmt.Printf("%x\n", ewkb)
 	return parseEWKBRaw(soType, ewkb)
 }
 
