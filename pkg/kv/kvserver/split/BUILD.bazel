@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "split",
     srcs = [
         "decider.go",
         "finder.go",
@@ -9,9 +9,28 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/kv/kvserver/split",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/keys:go_default_library",
-        "//pkg/roachpb:go_default_library",
-        "//pkg/util/syncutil:go_default_library",
+        "//pkg/keys",
+        "//pkg/roachpb",
+        "//pkg/util/syncutil",
+    ],
+)
+
+go_test(
+    name = "split_test",
+    srcs = [
+        "decider_test.go",
+        "finder_test.go",
+    ],
+    embed = [":split"],
+    deps = [
+        "//pkg/keys",
+        "//pkg/roachpb",
+        "//pkg/util/encoding",
+        "//pkg/util/leaktest",
+        "//pkg/util/stop",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/stretchr/testify/assert",
+        "//vendor/github.com/stretchr/testify/require",
     ],
 )
 
@@ -23,13 +42,13 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/keys:go_default_library",
-        "//pkg/roachpb:go_default_library",
-        "//pkg/util/encoding:go_default_library",
-        "//pkg/util/leaktest:go_default_library",
-        "//pkg/util/stop:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//vendor/github.com/stretchr/testify/assert:go_default_library",
-        "//vendor/github.com/stretchr/testify/require:go_default_library",
+        "//pkg/keys",
+        "//pkg/roachpb",
+        "//pkg/util/encoding",
+        "//pkg/util/leaktest",
+        "//pkg/util/stop",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/stretchr/testify/assert",
+        "//vendor/github.com/stretchr/testify/require",
     ],
 )

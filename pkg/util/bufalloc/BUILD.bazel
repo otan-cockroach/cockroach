@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "bufalloc",
     srcs = ["byte_allocator.go"],
     importpath = "github.com/cockroachdb/cockroach/pkg/util/bufalloc",
     visibility = ["//visibility:public"],

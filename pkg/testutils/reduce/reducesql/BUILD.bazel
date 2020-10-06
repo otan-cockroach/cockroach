@@ -1,15 +1,30 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "reducesql",
     srcs = ["reducesql.go"],
     importpath = "github.com/cockroachdb/cockroach/pkg/testutils/reduce/reducesql",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/sql/parser:go_default_library",
-        "//pkg/sql/sem/builtins:go_default_library",
-        "//pkg/sql/sem/tree:go_default_library",
-        "//pkg/testutils/reduce:go_default_library",
+        "//pkg/sql/parser",
+        "//pkg/sql/sem/builtins",
+        "//pkg/sql/sem/tree",
+        "//pkg/testutils/reduce",
+    ],
+)
+
+go_test(
+    name = "reducesql_test",
+    srcs = ["reducesql_test.go"],
+    data = glob(["testdata/**"]),
+    deps = [
+        ":reducesql",
+        "//pkg/base",
+        "//pkg/security",
+        "//pkg/server",
+        "//pkg/testutils/reduce",
+        "//pkg/testutils/skip",
+        "//vendor/github.com/jackc/pgx",
     ],
 )
 
@@ -19,11 +34,12 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":go_default_library"],
     deps = [
-        "//pkg/base:go_default_library",
-        "//pkg/security:go_default_library",
-        "//pkg/server:go_default_library",
-        "//pkg/testutils/reduce:go_default_library",
-        "//pkg/testutils/skip:go_default_library",
-        "//vendor/github.com/jackc/pgx:go_default_library",
+        ":reducesql",
+        "//pkg/base",
+        "//pkg/security",
+        "//pkg/server",
+        "//pkg/testutils/reduce",
+        "//pkg/testutils/skip",
+        "//vendor/github.com/jackc/pgx",
     ],
 )

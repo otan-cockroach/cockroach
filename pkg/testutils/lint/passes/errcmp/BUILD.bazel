@@ -1,13 +1,13 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "errcmp",
     srcs = ["errcmp.go"],
     importpath = "github.com/cockroachdb/cockroach/pkg/testutils/lint/passes/errcmp",
     visibility = ["//visibility:public"],
     deps = [
-        "//vendor/golang.org/x/tools/go/analysis:go_default_library",
-        "//vendor/golang.org/x/tools/go/analysis/passes/inspect:go_default_library",
-        "//vendor/golang.org/x/tools/go/ast/inspector:go_default_library",
+        "//vendor/golang.org/x/tools/go/analysis",
+        "//vendor/golang.org/x/tools/go/analysis/passes/inspect",
+        "//vendor/golang.org/x/tools/go/ast/inspector",
     ],
 )

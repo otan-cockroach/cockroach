@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "sessiondata",
     srcs = [
         "search_path.go",
         "sequence_state.go",
@@ -10,17 +10,24 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/sql/sessiondata",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/sql/lex:go_default_library",
-        "//pkg/sql/pgwire/pgcode:go_default_library",
-        "//pkg/sql/pgwire/pgerror:go_default_library",
-        "//pkg/sql/pgwire/pgnotice:go_default_library",
-        "//pkg/util/syncutil:go_default_library",
+        "//pkg/sql/lex",
+        "//pkg/sql/pgwire/pgcode",
+        "//pkg/sql/pgwire/pgerror",
+        "//pkg/sql/pgwire/pgnotice",
+        "//pkg/util/syncutil",
     ],
+)
+
+go_test(
+    name = "sessiondata_test",
+    srcs = ["search_path_test.go"],
+    embed = [":sessiondata"],
+    deps = ["//vendor/github.com/stretchr/testify/assert"],
 )
 
 go_test(
     name = "go_default_test",
     srcs = ["search_path_test.go"],
     embed = [":go_default_library"],
-    deps = ["//vendor/github.com/stretchr/testify/assert:go_default_library"],
+    deps = ["//vendor/github.com/stretchr/testify/assert"],
 )

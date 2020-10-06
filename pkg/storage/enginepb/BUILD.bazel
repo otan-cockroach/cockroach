@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "enginepb",
     srcs = [
         "decode.go",
         "engine.go",
@@ -16,11 +16,27 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/storage/enginepb",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/util/hlc:go_default_library",
-        "//pkg/util/uuid:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/gogo/protobuf/proto:go_default_library",
-        "//vendor/github.com/gogo/protobuf/sortkeys:go_default_library",
+        "//pkg/util/hlc",
+        "//pkg/util/uuid",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/gogo/protobuf/proto",
+        "//vendor/github.com/gogo/protobuf/sortkeys",
+    ],
+)
+
+go_test(
+    name = "enginepb_test",
+    srcs = [
+        "decode_test.go",
+        "mvcc_test.go",
+    ],
+    deps = [
+        ":enginepb",
+        "//pkg/roachpb",
+        "//pkg/storage",
+        "//pkg/util/hlc",
+        "//pkg/util/uuid",
+        "//vendor/github.com/stretchr/testify/assert",
     ],
 )
 
@@ -32,10 +48,11 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/roachpb:go_default_library",
-        "//pkg/storage:go_default_library",
-        "//pkg/util/hlc:go_default_library",
-        "//pkg/util/uuid:go_default_library",
-        "//vendor/github.com/stretchr/testify/assert:go_default_library",
+        ":enginepb",
+        "//pkg/roachpb",
+        "//pkg/storage",
+        "//pkg/util/hlc",
+        "//pkg/util/uuid",
+        "//vendor/github.com/stretchr/testify/assert",
     ],
 )

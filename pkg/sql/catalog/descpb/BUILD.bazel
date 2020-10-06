@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "descpb",
     srcs = [
         "column.go",
         "constraint.go",
@@ -21,22 +21,35 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/sql/catalog/descpb",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/geo/geoindex:go_default_library",
-        "//pkg/keys:go_default_library",
-        "//pkg/roachpb:go_default_library",
-        "//pkg/security:go_default_library",
-        "//pkg/sql/catalog/catconstants:go_default_library",
-        "//pkg/sql/opt/cat:go_default_library",
-        "//pkg/sql/parser:go_default_library",
-        "//pkg/sql/privilege:go_default_library",
-        "//pkg/sql/sem/tree:go_default_library",
-        "//pkg/sql/types:go_default_library",
-        "//pkg/util/encoding:go_default_library",
-        "//pkg/util/errorutil/unimplemented:go_default_library",
-        "//pkg/util/hlc:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/gogo/protobuf/proto:go_default_library",
-        "//vendor/github.com/gogo/protobuf/sortkeys:go_default_library",
+        "//pkg/geo/geoindex",
+        "//pkg/keys",
+        "//pkg/roachpb",
+        "//pkg/security",
+        "//pkg/sql/catalog/catconstants",
+        "//pkg/sql/opt/cat",
+        "//pkg/sql/parser",
+        "//pkg/sql/privilege",
+        "//pkg/sql/sem/tree",
+        "//pkg/sql/types",
+        "//pkg/util/encoding",
+        "//pkg/util/errorutil/unimplemented",
+        "//pkg/util/hlc",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/gogo/protobuf/proto",
+        "//vendor/github.com/gogo/protobuf/sortkeys",
+    ],
+)
+
+go_test(
+    name = "descpb_test",
+    srcs = ["privilege_test.go"],
+    embed = [":descpb"],
+    deps = [
+        "//pkg/keys",
+        "//pkg/security",
+        "//pkg/sql/privilege",
+        "//pkg/testutils",
+        "//pkg/util/leaktest",
     ],
 )
 
@@ -45,10 +58,10 @@ go_test(
     srcs = ["privilege_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/keys:go_default_library",
-        "//pkg/security:go_default_library",
-        "//pkg/sql/privilege:go_default_library",
-        "//pkg/testutils:go_default_library",
-        "//pkg/util/leaktest:go_default_library",
+        "//pkg/keys",
+        "//pkg/security",
+        "//pkg/sql/privilege",
+        "//pkg/testutils",
+        "//pkg/util/leaktest",
     ],
 )

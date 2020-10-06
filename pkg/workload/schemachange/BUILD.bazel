@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "schemachange",
     srcs = [
         "deck.go",
         "optype_string.go",
@@ -10,14 +10,14 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/workload/schemachange",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/sql/sem/tree:go_default_library",
-        "//pkg/sql/sqlbase:go_default_library",
-        "//pkg/util/syncutil:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//pkg/workload:go_default_library",
-        "//pkg/workload/histogram:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/jackc/pgx:go_default_library",
-        "//vendor/github.com/spf13/pflag:go_default_library",
+        "//pkg/sql/sem/tree",
+        "//pkg/sql/sqlbase",
+        "//pkg/util/syncutil",
+        "//pkg/util/timeutil",
+        "//pkg/workload",
+        "//pkg/workload/histogram",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/jackc/pgx",
+        "//vendor/github.com/spf13/pflag",
     ],
 )

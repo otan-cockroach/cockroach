@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "heapprofiler",
     srcs = [
         "cgoprofiler.go",
         "heapprofiler.go",
@@ -12,14 +12,27 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/server/heapprofiler",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/server/dumpstore:go_default_library",
-        "//pkg/server/status:go_default_library",
-        "//pkg/settings:go_default_library",
-        "//pkg/settings/cluster:go_default_library",
-        "//pkg/util/envutil:go_default_library",
-        "//pkg/util/log:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
+        "//pkg/server/dumpstore",
+        "//pkg/server/status",
+        "//pkg/settings",
+        "//pkg/settings/cluster",
+        "//pkg/util/envutil",
+        "//pkg/util/log",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
+    ],
+)
+
+go_test(
+    name = "heapprofiler_test",
+    srcs = [
+        "profiler_common_test.go",
+        "profilestore_test.go",
+    ],
+    embed = [":heapprofiler"],
+    deps = [
+        "//pkg/server/dumpstore",
+        "//vendor/github.com/stretchr/testify/assert",
     ],
 )
 
@@ -31,7 +44,7 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/server/dumpstore:go_default_library",
-        "//vendor/github.com/stretchr/testify/assert:go_default_library",
+        "//pkg/server/dumpstore",
+        "//vendor/github.com/stretchr/testify/assert",
     ],
 )

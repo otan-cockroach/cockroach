@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "bench",
     srcs = [
         "foreachdb.go",
         "query.go",
@@ -10,13 +10,38 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/bench",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/base:go_default_library",
-        "//pkg/testutils/serverutils:go_default_library",
-        "//pkg/testutils/skip:go_default_library",
-        "//pkg/testutils/sqlutils:go_default_library",
-        "//pkg/testutils/testcluster:go_default_library",
-        "//vendor/github.com/go-sql-driver/mysql:go_default_library",
-        "//vendor/github.com/lib/pq:go_default_library",
+        "//pkg/base",
+        "//pkg/testutils/serverutils",
+        "//pkg/testutils/skip",
+        "//pkg/testutils/sqlutils",
+        "//pkg/testutils/testcluster",
+        "//vendor/github.com/go-sql-driver/mysql",
+        "//vendor/github.com/lib/pq",
+    ],
+)
+
+go_test(
+    name = "bench_test",
+    srcs = [
+        "bench_test.go",
+        "main_test.go",
+        "pgbench_test.go",
+    ],
+    embed = [":bench"],
+    deps = [
+        "//pkg/base",
+        "//pkg/security",
+        "//pkg/security/securitytest",
+        "//pkg/server",
+        "//pkg/testutils/serverutils",
+        "//pkg/testutils/skip",
+        "//pkg/testutils/sqlutils",
+        "//pkg/testutils/testcluster",
+        "//pkg/util/log",
+        "//pkg/util/randutil",
+        "//pkg/util/retry",
+        "//vendor/github.com/go-sql-driver/mysql",
+        "//vendor/github.com/lib/pq",
     ],
 )
 
@@ -29,18 +54,18 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/base:go_default_library",
-        "//pkg/security:go_default_library",
-        "//pkg/security/securitytest:go_default_library",
-        "//pkg/server:go_default_library",
-        "//pkg/testutils/serverutils:go_default_library",
-        "//pkg/testutils/skip:go_default_library",
-        "//pkg/testutils/sqlutils:go_default_library",
-        "//pkg/testutils/testcluster:go_default_library",
-        "//pkg/util/log:go_default_library",
-        "//pkg/util/randutil:go_default_library",
-        "//pkg/util/retry:go_default_library",
-        "//vendor/github.com/go-sql-driver/mysql:go_default_library",
-        "//vendor/github.com/lib/pq:go_default_library",
+        "//pkg/base",
+        "//pkg/security",
+        "//pkg/security/securitytest",
+        "//pkg/server",
+        "//pkg/testutils/serverutils",
+        "//pkg/testutils/skip",
+        "//pkg/testutils/sqlutils",
+        "//pkg/testutils/testcluster",
+        "//pkg/util/log",
+        "//pkg/util/randutil",
+        "//pkg/util/retry",
+        "//vendor/github.com/go-sql-driver/mysql",
+        "//vendor/github.com/lib/pq",
     ],
 )

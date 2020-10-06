@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "skip",
     srcs = [
         "skip.go",
         "stress.go",
@@ -9,7 +9,7 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/testutils/skip",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/util:go_default_library",
-        "//pkg/util/envutil:go_default_library",
+        "//pkg/util",
+        "//pkg/util/envutil",
     ],
 )

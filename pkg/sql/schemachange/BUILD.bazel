@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "schemachange",
     srcs = [
         "alter_column_type.go",
         "columnconversionkind_string.go",
@@ -9,10 +9,37 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/sql/schemachange",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/sql/pgwire/pgcode:go_default_library",
-        "//pkg/sql/pgwire/pgerror:go_default_library",
-        "//pkg/sql/sem/tree:go_default_library",
-        "//pkg/sql/types:go_default_library",
+        "//pkg/sql/pgwire/pgcode",
+        "//pkg/sql/pgwire/pgerror",
+        "//pkg/sql/sem/tree",
+        "//pkg/sql/types",
+    ],
+)
+
+go_test(
+    name = "schemachange_test",
+    srcs = [
+        "alter_column_type_test.go",
+        "main_test.go",
+    ],
+    embed = [":schemachange"],
+    deps = [
+        "//pkg/base",
+        "//pkg/security",
+        "//pkg/security/securitytest",
+        "//pkg/server",
+        "//pkg/sql/parser",
+        "//pkg/sql/pgwire/pgcode",
+        "//pkg/sql/pgwire/pgerror",
+        "//pkg/sql/sem/tree",
+        "//pkg/sql/types",
+        "//pkg/testutils/serverutils",
+        "//pkg/testutils/sqlutils",
+        "//pkg/testutils/testcluster",
+        "//pkg/util/leaktest",
+        "//pkg/util/log",
+        "//pkg/util/randutil",
+        "//pkg/util/uuid",
     ],
 )
 
@@ -24,21 +51,21 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/base:go_default_library",
-        "//pkg/security:go_default_library",
-        "//pkg/security/securitytest:go_default_library",
-        "//pkg/server:go_default_library",
-        "//pkg/sql/parser:go_default_library",
-        "//pkg/sql/pgwire/pgcode:go_default_library",
-        "//pkg/sql/pgwire/pgerror:go_default_library",
-        "//pkg/sql/sem/tree:go_default_library",
-        "//pkg/sql/types:go_default_library",
-        "//pkg/testutils/serverutils:go_default_library",
-        "//pkg/testutils/sqlutils:go_default_library",
-        "//pkg/testutils/testcluster:go_default_library",
-        "//pkg/util/leaktest:go_default_library",
-        "//pkg/util/log:go_default_library",
-        "//pkg/util/randutil:go_default_library",
-        "//pkg/util/uuid:go_default_library",
+        "//pkg/base",
+        "//pkg/security",
+        "//pkg/security/securitytest",
+        "//pkg/server",
+        "//pkg/sql/parser",
+        "//pkg/sql/pgwire/pgcode",
+        "//pkg/sql/pgwire/pgerror",
+        "//pkg/sql/sem/tree",
+        "//pkg/sql/types",
+        "//pkg/testutils/serverutils",
+        "//pkg/testutils/sqlutils",
+        "//pkg/testutils/testcluster",
+        "//pkg/util/leaktest",
+        "//pkg/util/log",
+        "//pkg/util/randutil",
+        "//pkg/util/uuid",
     ],
 )

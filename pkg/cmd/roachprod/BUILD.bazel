@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "roachprod_lib",
     srcs = [
         "hosts.go",
         "main.go",
@@ -9,27 +9,27 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/cmd/roachprod",
     visibility = ["//visibility:private"],
     deps = [
-        "//pkg/cmd/roachprod/cloud:go_default_library",
-        "//pkg/cmd/roachprod/config:go_default_library",
-        "//pkg/cmd/roachprod/errors:go_default_library",
-        "//pkg/cmd/roachprod/install:go_default_library",
-        "//pkg/cmd/roachprod/ssh:go_default_library",
-        "//pkg/cmd/roachprod/ui:go_default_library",
-        "//pkg/cmd/roachprod/vm:go_default_library",
-        "//pkg/cmd/roachprod/vm/aws:go_default_library",
-        "//pkg/cmd/roachprod/vm/azure:go_default_library",
-        "//pkg/cmd/roachprod/vm/gce:go_default_library",
-        "//pkg/cmd/roachprod/vm/local:go_default_library",
-        "//pkg/util/flagutil:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/spf13/cobra:go_default_library",
-        "//vendor/golang.org/x/crypto/ssh/terminal:go_default_library",
-        "//vendor/golang.org/x/sys/unix:go_default_library",
+        "//pkg/cmd/roachprod/cloud",
+        "//pkg/cmd/roachprod/config",
+        "//pkg/cmd/roachprod/errors",
+        "//pkg/cmd/roachprod/install",
+        "//pkg/cmd/roachprod/ssh",
+        "//pkg/cmd/roachprod/ui",
+        "//pkg/cmd/roachprod/vm",
+        "//pkg/cmd/roachprod/vm/aws",
+        "//pkg/cmd/roachprod/vm/azure",
+        "//pkg/cmd/roachprod/vm/gce",
+        "//pkg/cmd/roachprod/vm/local",
+        "//pkg/util/flagutil",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/spf13/cobra",
+        "//vendor/golang.org/x/crypto/ssh/terminal",
+        "//vendor/golang.org/x/sys/unix",
     ],
 )
 
 go_binary(
     name = "roachprod",
-    embed = [":go_default_library"],
+    embed = [":roachprod_lib"],
     visibility = ["//visibility:public"],
 )

@@ -11,6 +11,7 @@
 // Package geoproj contains functions that interface with the PROJ library.
 package geoproj
 
+// #cgo CXXFLAGS: -std=c++14
 // #cgo CPPFLAGS: -I../../../c-deps/proj/src
 // #cgo !windows LDFLAGS: -lproj
 // #cgo linux LDFLAGS: -lrt -lm -lpthread

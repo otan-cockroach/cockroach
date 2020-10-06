@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "quotapool",
     srcs = [
         "config.go",
         "intpool.go",
@@ -13,10 +13,35 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/util/quotapool",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/util/log:go_default_library",
-        "//pkg/util/syncutil:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
+        "//pkg/util/log",
+        "//pkg/util/syncutil",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
+    ],
+)
+
+go_test(
+    name = "quotapool_test",
+    srcs = [
+        "bench_test.go",
+        "example_test.go",
+        "int_rate_impl_test.go",
+        "int_rate_test.go",
+        "intpool_test.go",
+        "manual_time_test.go",
+        "node_size_test.go",
+        "notify_queue_test.go",
+    ],
+    embed = [":quotapool"],
+    deps = [
+        "//pkg/testutils",
+        "//pkg/util/ctxgroup",
+        "//pkg/util/leaktest",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/stretchr/testify/assert",
+        "//vendor/github.com/stretchr/testify/require",
+        "//vendor/golang.org/x/sync/errgroup",
     ],
 )
 
@@ -34,13 +59,14 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/testutils:go_default_library",
-        "//pkg/util/ctxgroup:go_default_library",
-        "//pkg/util/leaktest:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/stretchr/testify/assert:go_default_library",
-        "//vendor/github.com/stretchr/testify/require:go_default_library",
-        "//vendor/golang.org/x/sync/errgroup:go_default_library",
+        ":quotapool",
+        "//pkg/testutils",
+        "//pkg/util/ctxgroup",
+        "//pkg/util/leaktest",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/stretchr/testify/assert",
+        "//vendor/github.com/stretchr/testify/require",
+        "//vendor/golang.org/x/sync/errgroup",
     ],
 )

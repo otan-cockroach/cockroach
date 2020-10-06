@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "lex",
     srcs = [
         "encode.go",
         "experimental_keywords.go",
@@ -14,11 +14,20 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/sql/lex",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/sql/pgwire/pgcode:go_default_library",
-        "//pkg/sql/pgwire/pgerror:go_default_library",
-        "//pkg/util/stringencoding:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/golang.org/x/text/unicode/norm:go_default_library",
+        "//pkg/sql/pgwire/pgcode",
+        "//pkg/sql/pgwire/pgerror",
+        "//pkg/util/stringencoding",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/golang.org/x/text/unicode/norm",
+    ],
+)
+
+go_test(
+    name = "lex_test",
+    srcs = ["encode_test.go"],
+    deps = [
+        ":lex",
+        "//pkg/sql/parser",
     ],
 )
 
@@ -26,5 +35,8 @@ go_test(
     name = "go_default_test",
     srcs = ["encode_test.go"],
     embed = [":go_default_library"],
-    deps = ["//pkg/sql/parser:go_default_library"],
+    deps = [
+        ":lex",
+        "//pkg/sql/parser",
+    ],
 )

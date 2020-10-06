@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "pprofui",
     srcs = [
         "fakeflags.go",
         "response_writer.go",
@@ -13,15 +13,21 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/server/debug/pprofui",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/util/log:go_default_library",
-        "//pkg/util/syncutil:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/cockroachdb/logtags:go_default_library",
-        "//vendor/github.com/google/pprof/driver:go_default_library",
-        "//vendor/github.com/google/pprof/profile:go_default_library",
-        "//vendor/github.com/spf13/pflag:go_default_library",
+        "//pkg/util/log",
+        "//pkg/util/syncutil",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/cockroachdb/logtags",
+        "//vendor/github.com/google/pprof/driver",
+        "//vendor/github.com/google/pprof/profile",
+        "//vendor/github.com/spf13/pflag",
     ],
+)
+
+go_test(
+    name = "pprofui_test",
+    srcs = ["server_test.go"],
+    embed = [":pprofui"],
 )
 
 go_test(

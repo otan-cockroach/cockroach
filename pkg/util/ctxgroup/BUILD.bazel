@@ -1,11 +1,22 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "ctxgroup",
     srcs = ["ctxgroup.go"],
     importpath = "github.com/cockroachdb/cockroach/pkg/util/ctxgroup",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/golang.org/x/sync/errgroup:go_default_library"],
+    deps = ["//vendor/golang.org/x/sync/errgroup"],
+)
+
+go_test(
+    name = "ctxgroup_test",
+    srcs = ["ctxgroup_test.go"],
+    embed = [":ctxgroup"],
+    deps = [
+        "//pkg/testutils",
+        "//pkg/util/leaktest",
+        "//vendor/github.com/cockroachdb/errors",
+    ],
 )
 
 go_test(
@@ -13,8 +24,8 @@ go_test(
     srcs = ["ctxgroup_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/testutils:go_default_library",
-        "//pkg/util/leaktest:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
+        "//pkg/testutils",
+        "//pkg/util/leaktest",
+        "//vendor/github.com/cockroachdb/errors",
     ],
 )

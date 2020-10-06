@@ -7,7 +7,19 @@ go_test(
         "internal_test.go",
     ],
     deps = [
-        "//pkg/cmd/prereqs/testdata/src/example.com/vendor/foo.com/baz:go_default_library",
-        "//pkg/cmd/prereqs/testdata/src/example.com/vendor/foo.com/foo:go_default_library",
+        "//pkg/cmd/prereqs/testdata/src/example.com/vendor/foo.com/baz",
+        "//pkg/cmd/prereqs/testdata/src/example.com/vendor/foo.com/foo",
+    ],
+)
+
+go_test(
+    name = "test_test",
+    srcs = [
+        "external_test.go",
+        "internal_test.go",
+    ],
+    deps = [
+        "//pkg/cmd/prereqs/testdata/src/example.com/vendor/foo.com/baz",
+        "//pkg/cmd/prereqs/testdata/src/example.com/vendor/foo.com/foo",
     ],
 )

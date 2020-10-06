@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "apply",
     srcs = [
         "cmd.go",
         "doc.go",
@@ -10,8 +10,22 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/kv/kvserver/apply",
     visibility = ["//visibility:public"],
     deps = [
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/go.etcd.io/etcd/raft/raftpb:go_default_library",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/go.etcd.io/etcd/raft/raftpb",
+    ],
+)
+
+go_test(
+    name = "apply_test",
+    srcs = [
+        "doc_test.go",
+        "task_test.go",
+    ],
+    deps = [
+        ":apply",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/stretchr/testify/require",
+        "//vendor/go.etcd.io/etcd/raft/raftpb",
     ],
 )
 
@@ -23,8 +37,9 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/stretchr/testify/require:go_default_library",
-        "//vendor/go.etcd.io/etcd/raft/raftpb:go_default_library",
+        ":apply",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/stretchr/testify/require",
+        "//vendor/go.etcd.io/etcd/raft/raftpb",
     ],
 )

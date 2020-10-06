@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "geomfn",
     srcs = [
         "azimuth.go",
         "binary_predicates.go",
@@ -24,15 +24,48 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/geo/geomfn",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/geo:go_default_library",
-        "//pkg/geo/geodist:go_default_library",
-        "//pkg/geo/geos:go_default_library",
-        "//pkg/geo/geosegmentize:go_default_library",
-        "//pkg/util:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/twpayne/go-geom:go_default_library",
-        "//vendor/github.com/twpayne/go-geom/encoding/ewkb:go_default_library",
-        "//vendor/github.com/twpayne/go-geom/xy/lineintersector:go_default_library",
+        "//pkg/geo",
+        "//pkg/geo/geodist",
+        "//pkg/geo/geos",
+        "//pkg/geo/geosegmentize",
+        "//pkg/util",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/twpayne/go-geom",
+        "//vendor/github.com/twpayne/go-geom/encoding/ewkb",
+        "//vendor/github.com/twpayne/go-geom/xy/lineintersector",
+    ],
+)
+
+go_test(
+    name = "geomfn_test",
+    srcs = [
+        "azimuth_test.go",
+        "binary_predicates_test.go",
+        "buffer_test.go",
+        "de9im_test.go",
+        "distance_test.go",
+        "envelope_test.go",
+        "force_test.go",
+        "geomfn_test.go",
+        "linear_reference_test.go",
+        "make_geometry_test.go",
+        "scale_test.go",
+        "segmentize_test.go",
+        "topology_operations_test.go",
+        "translate_test.go",
+        "unary_operators_test.go",
+        "validity_check_test.go",
+    ],
+    embed = [":geomfn"],
+    deps = [
+        "//pkg/geo",
+        "//pkg/geo/geopb",
+        "//pkg/geo/geos",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/stretchr/testify/assert",
+        "//vendor/github.com/stretchr/testify/require",
+        "//vendor/github.com/twpayne/go-geom",
+        "//vendor/github.com/twpayne/go-geom/encoding/wkt",
     ],
 )
 
@@ -58,13 +91,13 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/geo:go_default_library",
-        "//pkg/geo/geopb:go_default_library",
-        "//pkg/geo/geos:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/stretchr/testify/assert:go_default_library",
-        "//vendor/github.com/stretchr/testify/require:go_default_library",
-        "//vendor/github.com/twpayne/go-geom:go_default_library",
-        "//vendor/github.com/twpayne/go-geom/encoding/wkt:go_default_library",
+        "//pkg/geo",
+        "//pkg/geo/geopb",
+        "//pkg/geo/geos",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/stretchr/testify/assert",
+        "//vendor/github.com/stretchr/testify/require",
+        "//vendor/github.com/twpayne/go-geom",
+        "//vendor/github.com/twpayne/go-geom/encoding/wkt",
     ],
 )

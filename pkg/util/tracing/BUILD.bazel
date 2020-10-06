@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "tracing",
     srcs = [
         "annotate.go",
         "annotate_nocgo.go",
@@ -17,23 +17,42 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/util/tracing",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/settings:go_default_library",
-        "//pkg/util:go_default_library",
-        "//pkg/util/caller:go_default_library",
-        "//pkg/util/envutil:go_default_library",
-        "//pkg/util/syncutil:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/cockroachdb/logtags:go_default_library",
-        "//vendor/github.com/gogo/protobuf/proto:go_default_library",
-        "//vendor/github.com/gogo/protobuf/sortkeys:go_default_library",
-        "//vendor/github.com/gogo/protobuf/types:go_default_library",
-        "//vendor/github.com/jaegertracing/jaeger/model/json:go_default_library",
-        "//vendor/github.com/lightstep/lightstep-tracer-go:go_default_library",
-        "//vendor/github.com/opentracing/opentracing-go:go_default_library",
-        "//vendor/github.com/opentracing/opentracing-go/log:go_default_library",
-        "//vendor/github.com/openzipkin-contrib/zipkin-go-opentracing:go_default_library",
-        "//vendor/golang.org/x/net/trace:go_default_library",
+        "//pkg/settings",
+        "//pkg/util",
+        "//pkg/util/caller",
+        "//pkg/util/envutil",
+        "//pkg/util/syncutil",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/cockroachdb/logtags",
+        "//vendor/github.com/gogo/protobuf/proto",
+        "//vendor/github.com/gogo/protobuf/sortkeys",
+        "//vendor/github.com/gogo/protobuf/types",
+        "//vendor/github.com/jaegertracing/jaeger/model/json",
+        "//vendor/github.com/lightstep/lightstep-tracer-go",
+        "//vendor/github.com/opentracing/opentracing-go",
+        "//vendor/github.com/opentracing/opentracing-go/log",
+        "//vendor/github.com/openzipkin-contrib/zipkin-go-opentracing",
+        "//vendor/golang.org/x/net/trace",
+    ],
+)
+
+go_test(
+    name = "tracing_test",
+    srcs = [
+        "helpers_test.go",
+        "tags_test.go",
+        "tracer_span_test.go",
+        "tracer_test.go",
+    ],
+    embed = [":tracing"],
+    deps = [
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/cockroachdb/logtags",
+        "//vendor/github.com/lightstep/lightstep-tracer-go",
+        "//vendor/github.com/opentracing/opentracing-go",
+        "//vendor/github.com/opentracing/opentracing-go/log",
+        "//vendor/github.com/stretchr/testify/require",
     ],
 )
 
@@ -47,11 +66,11 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/cockroachdb/logtags:go_default_library",
-        "//vendor/github.com/lightstep/lightstep-tracer-go:go_default_library",
-        "//vendor/github.com/opentracing/opentracing-go:go_default_library",
-        "//vendor/github.com/opentracing/opentracing-go/log:go_default_library",
-        "//vendor/github.com/stretchr/testify/require:go_default_library",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/cockroachdb/logtags",
+        "//vendor/github.com/lightstep/lightstep-tracer-go",
+        "//vendor/github.com/opentracing/opentracing-go",
+        "//vendor/github.com/opentracing/opentracing-go/log",
+        "//vendor/github.com/stretchr/testify/require",
     ],
 )

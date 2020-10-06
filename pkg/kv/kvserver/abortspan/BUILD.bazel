@@ -1,20 +1,36 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "abortspan",
     srcs = ["abortspan.go"],
     importpath = "github.com/cockroachdb/cockroach/pkg/kv/kvserver/abortspan",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/keys:go_default_library",
-        "//pkg/kv/kvserver/kvserverbase:go_default_library",
-        "//pkg/roachpb:go_default_library",
-        "//pkg/storage:go_default_library",
-        "//pkg/storage/enginepb:go_default_library",
-        "//pkg/util/hlc:go_default_library",
-        "//pkg/util/log:go_default_library",
-        "//pkg/util/uuid:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
+        "//pkg/keys",
+        "//pkg/kv/kvserver/kvserverbase",
+        "//pkg/roachpb",
+        "//pkg/storage",
+        "//pkg/storage/enginepb",
+        "//pkg/util/hlc",
+        "//pkg/util/log",
+        "//pkg/util/uuid",
+        "//vendor/github.com/cockroachdb/errors",
+    ],
+)
+
+go_test(
+    name = "abortspan_test",
+    srcs = ["abortspan_test.go"],
+    embed = [":abortspan"],
+    deps = [
+        "//pkg/keys",
+        "//pkg/roachpb",
+        "//pkg/storage",
+        "//pkg/storage/enginepb",
+        "//pkg/util/hlc",
+        "//pkg/util/leaktest",
+        "//pkg/util/stop",
+        "//pkg/util/uuid",
     ],
 )
 
@@ -23,13 +39,13 @@ go_test(
     srcs = ["abortspan_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/keys:go_default_library",
-        "//pkg/roachpb:go_default_library",
-        "//pkg/storage:go_default_library",
-        "//pkg/storage/enginepb:go_default_library",
-        "//pkg/util/hlc:go_default_library",
-        "//pkg/util/leaktest:go_default_library",
-        "//pkg/util/stop:go_default_library",
-        "//pkg/util/uuid:go_default_library",
+        "//pkg/keys",
+        "//pkg/roachpb",
+        "//pkg/storage",
+        "//pkg/storage/enginepb",
+        "//pkg/util/hlc",
+        "//pkg/util/leaktest",
+        "//pkg/util/stop",
+        "//pkg/util/uuid",
     ],
 )

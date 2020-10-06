@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "result",
     srcs = [
         "intent.go",
         "metrics.go",
@@ -10,13 +10,23 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/kv/kvserver/batcheval/result",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/kv/kvserver/concurrency/lock:go_default_library",
-        "//pkg/kv/kvserver/kvserverpb:go_default_library",
-        "//pkg/roachpb:go_default_library",
-        "//pkg/util/hlc:go_default_library",
-        "//pkg/util/log:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/kr/pretty:go_default_library",
+        "//pkg/kv/kvserver/concurrency/lock",
+        "//pkg/kv/kvserver/kvserverpb",
+        "//pkg/roachpb",
+        "//pkg/util/hlc",
+        "//pkg/util/log",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/kr/pretty",
+    ],
+)
+
+go_test(
+    name = "result_test",
+    srcs = ["result_test.go"],
+    embed = [":result"],
+    deps = [
+        "//pkg/kv/kvserver/kvserverpb",
+        "//pkg/util/leaktest",
     ],
 )
 
@@ -25,7 +35,7 @@ go_test(
     srcs = ["result_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/kv/kvserver/kvserverpb:go_default_library",
-        "//pkg/util/leaktest:go_default_library",
+        "//pkg/kv/kvserver/kvserverpb",
+        "//pkg/util/leaktest",
     ],
 )

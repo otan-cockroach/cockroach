@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "serverutils",
     srcs = [
         "test_cluster_shim.go",
         "test_server_shim.go",
@@ -9,16 +9,16 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/testutils/serverutils",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/base:go_default_library",
-        "//pkg/kv:go_default_library",
-        "//pkg/roachpb:go_default_library",
-        "//pkg/rpc:go_default_library",
-        "//pkg/security:go_default_library",
-        "//pkg/settings/cluster:go_default_library",
-        "//pkg/testutils/sqlutils:go_default_library",
-        "//pkg/util/hlc:go_default_library",
-        "//pkg/util/httputil:go_default_library",
-        "//pkg/util/protoutil:go_default_library",
-        "//pkg/util/stop:go_default_library",
+        "//pkg/base",
+        "//pkg/kv",
+        "//pkg/roachpb",
+        "//pkg/rpc",
+        "//pkg/security",
+        "//pkg/settings/cluster",
+        "//pkg/testutils/sqlutils",
+        "//pkg/util/hlc",
+        "//pkg/util/httputil",
+        "//pkg/util/protoutil",
+        "//pkg/util/stop",
     ],
 )

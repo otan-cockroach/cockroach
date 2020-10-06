@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "hlc",
     srcs = [
         "hlc.go",
         "hlc_clock_device_linux.go",
@@ -14,11 +14,26 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/util/hlc",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/util/log:go_default_library",
-        "//pkg/util/syncutil:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/gogo/protobuf/proto:go_default_library",
+        "//pkg/util/log",
+        "//pkg/util/syncutil",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/gogo/protobuf/proto",
+    ],
+)
+
+go_test(
+    name = "hlc_test",
+    srcs = [
+        "hlc_test.go",
+        "timestamp_test.go",
+    ],
+    embed = [":hlc"],
+    deps = [
+        "//pkg/util/log",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/stretchr/testify/assert",
     ],
 )
 
@@ -30,9 +45,9 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/util/log:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/stretchr/testify/assert:go_default_library",
+        "//pkg/util/log",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/stretchr/testify/assert",
     ],
 )

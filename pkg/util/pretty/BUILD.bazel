@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "pretty",
     srcs = [
         "document.go",
         "pretty.go",
@@ -12,7 +12,14 @@ go_library(
 )
 
 go_test(
+    name = "pretty_test",
+    srcs = ["pretty_test.go"],
+    deps = [":pretty"],
+)
+
+go_test(
     name = "go_default_test",
     srcs = ["pretty_test.go"],
     embed = [":go_default_library"],
+    deps = [":pretty"],
 )

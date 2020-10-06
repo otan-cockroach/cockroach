@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "movr",
     srcs = [
         "movr.go",
         "rand.go",
@@ -10,20 +10,27 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/workload/movr",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/util/timeutil:go_default_library",
-        "//pkg/util/uuid:go_default_library",
-        "//pkg/workload:go_default_library",
-        "//pkg/workload/faker:go_default_library",
-        "//pkg/workload/histogram:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/spf13/pflag:go_default_library",
-        "//vendor/golang.org/x/exp/rand:go_default_library",
+        "//pkg/util/timeutil",
+        "//pkg/util/uuid",
+        "//pkg/workload",
+        "//pkg/workload/faker",
+        "//pkg/workload/histogram",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/spf13/pflag",
+        "//vendor/golang.org/x/exp/rand",
     ],
+)
+
+go_test(
+    name = "movr_test",
+    srcs = ["movr_test.go"],
+    embed = [":movr"],
+    deps = ["//vendor/github.com/stretchr/testify/require"],
 )
 
 go_test(
     name = "go_default_test",
     srcs = ["movr_test.go"],
     embed = [":go_default_library"],
-    deps = ["//vendor/github.com/stretchr/testify/require:go_default_library"],
+    deps = ["//vendor/github.com/stretchr/testify/require"],
 )

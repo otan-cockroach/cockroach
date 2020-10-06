@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "sqlproxyccl",
     srcs = [
         "error.go",
         "errorcode_string.go",
@@ -11,10 +11,23 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/ccl/sqlproxyccl",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/util/log:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/jackc/pgproto3/v2:go_default_library",
+        "//pkg/util/log",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/jackc/pgproto3/v2:pgproto3",
+    ],
+)
+
+go_test(
+    name = "sqlproxyccl_test",
+    srcs = ["proxy_test.go"],
+    embed = [":sqlproxyccl"],
+    deps = [
+        "//pkg/testutils/skip",
+        "//pkg/util/leaktest",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/jackc/pgx/v4:pgx",
+        "//vendor/github.com/stretchr/testify/require",
     ],
 )
 
@@ -23,10 +36,10 @@ go_test(
     srcs = ["proxy_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/testutils/skip:go_default_library",
-        "//pkg/util/leaktest:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
-        "//vendor/github.com/jackc/pgx/v4:go_default_library",
-        "//vendor/github.com/stretchr/testify/require:go_default_library",
+        "//pkg/testutils/skip",
+        "//pkg/util/leaktest",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/jackc/pgx/v4:pgx",
+        "//vendor/github.com/stretchr/testify/require",
     ],
 )

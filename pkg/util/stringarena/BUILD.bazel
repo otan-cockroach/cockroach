@@ -1,11 +1,17 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "stringarena",
     srcs = ["arena.go"],
     importpath = "github.com/cockroachdb/cockroach/pkg/util/stringarena",
     visibility = ["//visibility:public"],
-    deps = ["//pkg/util/mon:go_default_library"],
+    deps = ["//pkg/util/mon"],
+)
+
+go_test(
+    name = "stringarena_test",
+    srcs = ["arena_test.go"],
+    embed = [":stringarena"],
 )
 
 go_test(

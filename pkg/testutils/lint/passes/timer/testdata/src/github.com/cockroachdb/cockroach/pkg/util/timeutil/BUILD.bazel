@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "timeutil",
     srcs = ["timer.go"],
     importpath = "github.com/cockroachdb/cockroach/pkg/testutils/lint/passes/timer/testdata/src/github.com/cockroachdb/cockroach/pkg/util/timeutil",
     visibility = ["//visibility:public"],

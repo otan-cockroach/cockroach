@@ -604,6 +604,14 @@ def go_deps():
         sum = "h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=",
         version = "v1.1.1",
     )
+
+    go_repository(
+        name = "com_github_denisenkom_go_mssqldb",
+        build_file_proto_mode = "disable",
+        importpath = "github.com/denisenkom/go-mssqldb",
+        sum = "h1:83Wprp6ROGeiHFAP8WJdI2RoxALQYgdllERc3N5N2DM=",
+        version = "v0.0.0-20191124224453-732737034ffd",
+    )
     go_repository(
         name = "com_github_dgraph_io_badger",
         build_file_proto_mode = "disable",
@@ -736,6 +744,14 @@ def go_deps():
         importpath = "github.com/envoyproxy/protoc-gen-validate",
         sum = "h1:EQciDnbrYxy13PgWoY8AqoxGiPrpgBZ1R8UNe3ddc+A=",
         version = "v0.1.0",
+    )
+
+    go_repository(
+        name = "com_github_erikstmartin_go_testdb",
+        build_file_proto_mode = "disable",
+        importpath = "github.com/erikstmartin/go-testdb",
+        sum = "h1:Yzb9+7DPaBjB8zlTR87/ElzFsnQfuHnVUVqpZZIcV5Y=",
+        version = "v0.0.0-20160219214506-8d10e4a1bae5",
     )
     go_repository(
         name = "com_github_etcd_io_bbolt",
@@ -1038,6 +1054,14 @@ def go_deps():
         importpath = "github.com/golang/snappy",
         sum = "h1:gFVkHXmVAhEbxZVDln5V9GKrLaluNoFHDbrZwAWZgws=",
         version = "v0.0.2-0.20190904063534-ff6b7dc882cf",
+    )
+
+    go_repository(
+        name = "com_github_golang_sql_civil",
+        build_file_proto_mode = "disable",
+        importpath = "github.com/golang-sql/civil",
+        sum = "h1:lXe2qZdvpiX5WZkZR4hgp4KJVfY3nMkvmwbVkpv1rVY=",
+        version = "v0.0.0-20190719163853-cb61b32ac6fe",
     )
     go_repository(
         name = "com_github_gomodule_redigo",
@@ -1453,6 +1477,28 @@ def go_deps():
         sum = "h1:gMB4IwRXYsWw4Bc6o/az2HJgFUA1ffSh90i26ZJ6Xl0=",
         version = "v2.0.2",
     )
+
+    go_repository(
+        name = "com_github_jinzhu_gorm",
+        build_file_proto_mode = "disable",
+        importpath = "github.com/jinzhu/gorm",
+        sum = "h1:+IyIjPEABKRpsu/F8OvDPy9fyQlgsg2luMV2ZIH5i5o=",
+        version = "v1.9.16",
+    )
+    go_repository(
+        name = "com_github_jinzhu_inflection",
+        build_file_proto_mode = "disable",
+        importpath = "github.com/jinzhu/inflection",
+        sum = "h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=",
+        version = "v1.0.0",
+    )
+    go_repository(
+        name = "com_github_jinzhu_now",
+        build_file_proto_mode = "disable",
+        importpath = "github.com/jinzhu/now",
+        sum = "h1:HjfetcXq097iXP0uoPCdnM4Efp5/9MsM0/M+XOTeR3M=",
+        version = "v1.0.1",
+    )
     go_repository(
         name = "com_github_jmespath_go_jmespath",
         build_file_proto_mode = "disable",
@@ -1781,6 +1827,14 @@ def go_deps():
         importpath = "github.com/mattn/go-runewidth",
         sum = "h1:Ei8KR0497xHyKJPAv59M1dkC+rOZCMBJ+t3fZ+twI54=",
         version = "v0.0.7",
+    )
+
+    go_repository(
+        name = "com_github_mattn_go_sqlite3",
+        build_file_proto_mode = "disable",
+        importpath = "github.com/mattn/go-sqlite3",
+        sum = "h1:mLyGNKR8+Vv9CAU7PphKa2hkEqxxhn8i32J6FPj1/QA=",
+        version = "v1.14.0",
     )
     go_repository(
         name = "com_github_mattn_go_zglob",
@@ -2186,8 +2240,8 @@ def go_deps():
         name = "com_github_puerkitobio_goquery",
         build_file_proto_mode = "disable",
         importpath = "github.com/PuerkitoBio/goquery",
-        sum = "h1:uGvmFXOA73IKluu/F84Xd1tt/z07GYm8X49XKHP7EJk=",
-        version = "v1.5.0",
+        sum = "h1:PSPBGne8NIUWw+/7vFBV+kG2J/5MOjbzc7154OaKCSE=",
+        version = "v1.5.1",
     )
     go_repository(
         name = "com_github_rcrowley_go_metrics",

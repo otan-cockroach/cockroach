@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "testutils",
     srcs = [
         "base.go",
         "dir.go",
@@ -18,17 +18,34 @@ go_library(
     importpath = "github.com/cockroachdb/cockroach/pkg/testutils",
     visibility = ["//visibility:public"],
     deps = [
-        "//pkg/base:go_default_library",
-        "//pkg/roachpb:go_default_library",
-        "//pkg/security:go_default_library",
-        "//pkg/sql/pgwire/pgerror:go_default_library",
-        "//pkg/util/fileutil:go_default_library",
-        "//pkg/util/log:go_default_library",
-        "//pkg/util/retry:go_default_library",
-        "//pkg/util/syncutil:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//pkg/util/tracing:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
+        "//pkg/base",
+        "//pkg/roachpb",
+        "//pkg/security",
+        "//pkg/sql/pgwire/pgerror",
+        "//pkg/util/fileutil",
+        "//pkg/util/log",
+        "//pkg/util/retry",
+        "//pkg/util/syncutil",
+        "//pkg/util/timeutil",
+        "//pkg/util/tracing",
+        "//vendor/github.com/cockroachdb/errors",
+    ],
+)
+
+go_test(
+    name = "testutils_test",
+    srcs = [
+        "net_test.go",
+        "soon_test.go",
+    ],
+    embed = [":testutils"],
+    deps = [
+        "//pkg/util",
+        "//pkg/util/grpcutil",
+        "//pkg/util/leaktest",
+        "//pkg/util/netutil",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
     ],
 )
 
@@ -40,11 +57,11 @@ go_test(
     ],
     embed = [":go_default_library"],
     deps = [
-        "//pkg/util:go_default_library",
-        "//pkg/util/grpcutil:go_default_library",
-        "//pkg/util/leaktest:go_default_library",
-        "//pkg/util/netutil:go_default_library",
-        "//pkg/util/timeutil:go_default_library",
-        "//vendor/github.com/cockroachdb/errors:go_default_library",
+        "//pkg/util",
+        "//pkg/util/grpcutil",
+        "//pkg/util/leaktest",
+        "//pkg/util/netutil",
+        "//pkg/util/timeutil",
+        "//vendor/github.com/cockroachdb/errors",
     ],
 )
