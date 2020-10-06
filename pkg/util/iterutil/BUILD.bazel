@@ -1,0 +1,18 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "iterutil",
+    srcs = ["iterutil.go"],
+    importpath = "github.com/cockroachdb/cockroach/pkg/util/iterutil",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "iterutil_test",
+    srcs = ["iterutil_test.go"],
+    embed = [":iterutil"],
+    deps = [
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/stretchr/testify/require",
+    ],
+)

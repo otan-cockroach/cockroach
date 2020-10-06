@@ -1,0 +1,38 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "catalog",
+    srcs = [
+        "accessor.go",
+        "catalog.go",
+        "desc_getter.go",
+        "descriptor.go",
+        "errors.go",
+    ],
+    importpath = "github.com/cockroachdb/cockroach/pkg/sql/catalog",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/keys",
+        "//pkg/kv",
+        "//pkg/roachpb",
+        "//pkg/settings/cluster",
+        "//pkg/sql/catalog/descpb",
+        "//pkg/sql/pgwire/pgcode",
+        "//pkg/sql/pgwire/pgerror",
+        "//pkg/sql/sem/tree",
+        "//pkg/sql/types",
+        "//pkg/util",
+        "//pkg/util/hlc",
+        "//vendor/github.com/cockroachdb/errors",
+    ],
+)
+
+go_test(
+    name = "catalog_test",
+    srcs = ["dep_test.go"],
+    embed = [":catalog"],
+    deps = [
+        "//pkg/testutils/buildutil",
+        "//pkg/util/leaktest",
+    ],
+)

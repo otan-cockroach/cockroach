@@ -1,0 +1,59 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "parser",
+    srcs = [
+        "help.go",
+        "help_messages.go",
+        "lexer.go",
+        "parse.go",
+        "scan.go",
+        "show_syntax.go",
+        "sql.go",
+    ],
+    importpath = "github.com/cockroachdb/cockroach/pkg/sql/parser",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pkg/base",
+        "//pkg/geo/geopb",
+        "//pkg/roachpb",
+        "//pkg/sql/lex",
+        "//pkg/sql/pgwire/pgcode",
+        "//pkg/sql/pgwire/pgerror",
+        "//pkg/sql/privilege",
+        "//pkg/sql/sem/tree",
+        "//pkg/sql/sessiondata",
+        "//pkg/sql/types",
+        "//pkg/util/errorutil/unimplemented",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/lib/pq/oid",
+    ],
+)
+
+go_test(
+    name = "parser_test",
+    srcs = [
+        "help_test.go",
+        "helpmap_test.go",
+        "lexer_test.go",
+        "parse_internal_test.go",
+        "parse_test.go",
+        "scan_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":parser"],
+    deps = [
+        "//pkg/sql/lex",
+        "//pkg/sql/pgwire/pgerror",
+        "//pkg/sql/sem/builtins",
+        "//pkg/sql/sem/tree",
+        "//pkg/testutils",
+        "//pkg/testutils/sqlutils",
+        "//pkg/util/leaktest",
+        "//pkg/util/log",
+        "//vendor/github.com/cockroachdb/datadriven",
+        "//vendor/github.com/cockroachdb/errors",
+        "//vendor/github.com/stretchr/testify/assert",
+        "//vendor/github.com/stretchr/testify/require",
+    ],
+)
