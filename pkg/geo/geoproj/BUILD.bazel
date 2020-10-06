@@ -62,7 +62,8 @@ go_library(
         "//conditions:default": [],
     }),
     cppopts = [
-        "-Ic-deps/proj/src",
+        # "-Ic-deps/proj/src",
+        "-I/Users/irfansharif/Software/src/github.com/cockroachdb/cockroach/c-deps/proj/src",
         "-I/Users/irfansharif/Software/native/x86_64-apple-darwin19.6.0/jemalloc/include",
     ],
     cxxopts = ["-std=c++14"],

@@ -67,7 +67,7 @@ go_library(
         "//conditions:default": [],
     }),
     cppopts = [
-        "-Ic-deps/libroach/include",
+        "-I/Users/irfansharif/Software/src/github.com/cockroachdb/cockroach/c-deps/libroach/include",
         "-I/Users/irfansharif/Software/native/x86_64-apple-darwin19.6.0/jemalloc/include",
     ],
     importpath = "github.com/cockroachdb/cockroach/pkg/storage",
