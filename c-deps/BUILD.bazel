@@ -1,0 +1,12 @@
+load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
+
+cmake_external(
+    name = "proj",
+    cache_entries = {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_LIBPROJ_SHARED": "OFF",
+    },
+    lib_source = "@proj//:all",
+    static_libraries = ["libproj.a"],
+    visibility = ["//visibility:public"],
+)

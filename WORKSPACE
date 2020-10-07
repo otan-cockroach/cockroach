@@ -28,7 +28,7 @@ git_repository(
     name = "bazel_gazelle",
     # branch = "fix_cxx_cpp",
     remote = "https://github.com/otan-cockroach/bazel-gazelle",
-    commit = "6b55b54afc6e3d7a31c4803e495b489b29b8969a",
+    commit = "ba61b394d881707ad9110f6b94b18bef2708240b",
 )
 
 # Load go rules.
@@ -70,3 +70,23 @@ load("//:dependencies.bzl", "go_deps")
 
 # gazelle:repository_macro dependencies.bzl%go_deps
 go_deps()
+
+# Load up cmake dependencies.
+
+http_archive(
+   name = "rules_foreign_cc",
+   strip_prefix = "rules_foreign_cc-master",
+   url = "https://github.com/bazelbuild/rules_foreign_cc/archive/master.zip",
+)
+
+load("@rules_foreign_cc//:workspace_definitions.bzl", "rules_foreign_cc_dependencies")
+
+rules_foreign_cc_dependencies()
+
+BUILD_ALL_CONTENT = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])"""
+
+new_local_repository(
+  name = "proj",
+  path = "./c-deps/proj",
+  build_file_content = BUILD_ALL_CONTENT,
+)

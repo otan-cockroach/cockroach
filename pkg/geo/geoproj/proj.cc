@@ -9,7 +9,7 @@
 // licenses/APL.txt.
 
 #include "proj.h"
-#include "proj_api.h"
+#include <proj_api.h>
 #include <cstring>
 #include <stdlib.h>
 #include <string>
