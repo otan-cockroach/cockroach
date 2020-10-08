@@ -1,4 +1,5 @@
 load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
+load("@rules_foreign_cc//tools/build_defs:configure.bzl", "configure_make")
 
 cmake_external(
     name = "proj",
@@ -8,5 +9,24 @@ cmake_external(
     },
     lib_source = "@proj//:all",
     static_libraries = ["libproj.a"],
+    visibility = ["//visibility:public"],
+)
+
+configure_make(
+    name = "jemalloc",
+    autoconf = True,
+    configure_in_place = True,
+    configure_env_vars = {
+        "AR": "",
+    },
+    configure_options = [
+        "--enable-prof",
+    ],
+    make_commands = [
+        "make -j1 build_lib_static",
+        "mkdir -p jemalloc && mkdir jemalloc/lib && cp lib/libjemalloc.a jemalloc/lib",
+    ],
+    lib_source = "@jemalloc//:all",
+    static_libraries = ["libjemalloc.a"],
     visibility = ["//visibility:public"],
 )

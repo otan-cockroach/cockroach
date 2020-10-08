@@ -73,10 +73,10 @@ go_deps()
 
 # Load up cmake dependencies.
 
-http_archive(
+git_repository(
    name = "rules_foreign_cc",
-   strip_prefix = "rules_foreign_cc-master",
-   url = "https://github.com/bazelbuild/rules_foreign_cc/archive/master.zip",
+   commit = "f6a15abd55be915b914aa618b50831bf5981340f",
+   remote = "https://github.com/otan-cockroach/rules_foreign_cc",
 )
 
 load("@rules_foreign_cc//:workspace_definitions.bzl", "rules_foreign_cc_dependencies")
@@ -88,5 +88,11 @@ BUILD_ALL_CONTENT = """filegroup(name = "all", srcs = glob(["**"]), visibility =
 new_local_repository(
   name = "proj",
   path = "./c-deps/proj",
+  build_file_content = BUILD_ALL_CONTENT,
+)
+
+new_local_repository(
+  name = "jemalloc",
+  path = "./c-deps/jemalloc",
   build_file_content = BUILD_ALL_CONTENT,
 )
