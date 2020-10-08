@@ -68,6 +68,7 @@ go_library(
     }),
     cppopts = [
         "-I/Users/otan/go/native/x86_64-apple-darwin19.6.0/jemalloc/include",
+        "-I/Users/otan/go/src/github.com/cockroachdb/cockroach/c-deps/libroach/include",
         "-Ic-deps/libroach/include",
     ],
     importpath = "github.com/cockroachdb/cockroach/pkg/storage",

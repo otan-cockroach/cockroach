@@ -7,9 +7,13 @@ go_library(
         "help_messages.go",
         "lexer.go",
         "parse.go",
+        "parser.go",
         "scan.go",
         "show_syntax.go",
         "sql.go",
+    ],
+    data = [
+        ":sql-goyacc",  # keep
     ],
     importpath = "github.com/cockroachdb/cockroach/pkg/sql/parser",
     visibility = ["//visibility:public"],
@@ -21,6 +25,7 @@ go_library(
         "//pkg/sql/pgwire/pgcode",
         "//pkg/sql/pgwire/pgerror",
         "//pkg/sql/privilege",
+        "//pkg/sql/roleoption",
         "//pkg/sql/sem/tree",
         "//pkg/sql/sessiondata",
         "//pkg/sql/types",
@@ -55,5 +60,28 @@ go_test(
         "//vendor/github.com/cockroachdb/errors",
         "//vendor/github.com/stretchr/testify/assert",
         "//vendor/github.com/stretchr/testify/require",
+    ],
+)
+
+sh_binary(
+    name = "sql-gen",
+    srcs = ["sql-gen.sh"],
+    data = ["sql-gen.sh"],
+)
+
+genrule(
+    name = "sql-goyacc",
+    srcs = [
+        "sql.y",
+        "replace_help_rules.awk",
+    ],
+    outs = ["sql.go"],
+    cmd = """
+      $(location :sql-gen) $(location sql.y) $(location replace_help_rules.awk) $(location sql.go) $(location //vendor/golang.org/x/tools/cmd/goyacc) $(location //vendor/github.com/cockroachdb/gostdlib/x/tools/cmd/goimports)
+    """,
+    tools = [
+        ":sql-gen",
+        "//vendor/golang.org/x/tools/cmd/goyacc",
+        "//vendor/github.com/cockroachdb/gostdlib/x/tools/cmd/goimports",
     ],
 )
