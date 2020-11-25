@@ -150,6 +150,7 @@ var _ planNode = &createDatabaseNode{}
 var _ planNode = &createIndexNode{}
 var _ planNode = &createSequenceNode{}
 var _ planNode = &createStatsNode{}
+var _ planNode = &createDatabaseNode{}
 var _ planNode = &createTableNode{}
 var _ planNode = &createTypeNode{}
 var _ planNode = &CreateRoleNode{}

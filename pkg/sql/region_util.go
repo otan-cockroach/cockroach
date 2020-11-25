@@ -11,6 +11,7 @@
 package sql
 
 import (
+	"encoding/json"
 	"sort"
 	"strings"
 
@@ -73,4 +74,44 @@ func checkLiveClusterRegion(liveClusterRegions liveClusterRegions, region descpb
 		)
 	}
 	return nil
+}
+
+// regionZoneConfigConstraintsMap represents an object to be used in the CONFIGURE ZONE syntax
+// representing the constraints clause.
+type regionZoneConfigConstraintsMap map[string]int
+
+func regionZoneConfigConstraintsMapFromRegions(
+	regions ...descpb.Region,
+) regionZoneConfigConstraintsMap {
+	constraints := make(regionZoneConfigConstraintsMap, len(regions))
+	for _, region := range regions {
+		constraints[region.ConstraintKey()] = 1
+	}
+	return constraints
+}
+
+// ToJSON converts the map into a JSON string.
+func (m regionZoneConfigConstraintsMap) ToJSON() (string, error) {
+	ret, err := json.Marshal(m)
+	if err != nil {
+		return "", err
+	}
+	return string(ret), nil
+}
+
+// regionLeasePreferences represents an object used in the CONFIGURE ZONE syntax
+// representing the lease preferences clause.
+type regionLeasePreferences [][]string
+
+func regionLeasePreferencesFromRegion(region descpb.Region) regionLeasePreferences {
+	return [][]string{{region.ConstraintKey()}}
+}
+
+// ToJSON converts the list into a JSON string.
+func (p regionLeasePreferences) ToJSON() (string, error) {
+	ret, err := json.Marshal(p)
+	if err != nil {
+		return "", err
+	}
+	return string(ret), nil
 }

@@ -12,3 +12,9 @@ package descpb
 
 // Region is an alias for a region stored on the database.
 type Region string
+
+// ConstraintKey returns the key to use for constraints for a given region
+// in the CONFIGURE ZONE syntax.
+func (r Region) ConstraintKey() string {
+	return "+region=" + string(r)
+}

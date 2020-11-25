@@ -12,6 +12,7 @@ package sql
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/cockroachdb/cockroach/pkg/clusterversion"
@@ -30,6 +31,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
@@ -112,6 +114,12 @@ func (p *planner) createDatabase(
 		// Every database must be initialized with the public schema.
 		if err := p.CreateSchemaNamespaceEntry(ctx,
 			catalogkeys.NewPublicSchemaKey(id).Key(p.ExecCfg().Codec), keys.PublicSchemaID); err != nil {
+			return nil, true, err
+		}
+	}
+
+	if len(regionConfig.Regions) > 0 {
+		if err := p.applyRegionConfigOnZonesForDatabase(ctx, database.Name, regionConfig); err != nil {
 			return nil, true, err
 		}
 	}
@@ -305,4 +313,42 @@ func (p *planner) createRegionConfig(
 		return descpb.DatabaseRegionConfig{}, err
 	}
 	return regionConfig, nil
+}
+
+func (p *planner) applyRegionConfigOnZonesForDatabase(
+	ctx context.Context, dbName tree.Name, regionConfig descpb.DatabaseRegionConfig,
+) error {
+	constraints, err := regionZoneConfigConstraintsMapFromRegions(regionConfig.Regions...).ToJSON()
+	if err != nil {
+		return err
+	}
+	leasePreferences, err := regionLeasePreferencesFromRegion(regionConfig.PrimaryRegion).ToJSON()
+	if err != nil {
+		return err
+	}
+	numReplicas := len(regionConfig.Regions)
+	if numReplicas < 3 {
+		numReplicas = 3
+	}
+	if _, err := p.ExtendedEvalContext().ExecCfg.InternalExecutor.ExecEx(
+		ctx,
+		"apply-database-multiregion-set-zone-config",
+		p.Txn(),
+		sessiondata.NodeUserSessionDataOverride,
+		fmt.Sprintf(
+			`ALTER DATABASE %s
+				 CONFIGURE ZONE USING
+				   num_replicas=$1,
+					 constraints=$2,
+					 lease_preferences=$3
+		  `,
+			dbName.String(),
+		),
+		numReplicas,
+		constraints,
+		leasePreferences,
+	); err != nil {
+		return err
+	}
+	return nil
 }
