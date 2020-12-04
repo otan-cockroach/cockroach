@@ -45,8 +45,6 @@ SELECT count(1) FROM pg_namespace WHERE nspname LIKE 'pg_temp_%'
 query T rowsort
 SELECT table_name FROM [SHOW TABLES FROM pg_temp]
 ----
-temp_table_test
-temp_table_ref
 
 statement ok
 DROP TABLE temp_table_ref CASCADE; DROP TABLE temp_table_test CASCADE
