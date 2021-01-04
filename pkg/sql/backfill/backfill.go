@@ -202,6 +202,8 @@ func (cb *ColumnBackfiller) InitForDistributedUse(
 		// Set up a SemaContext to type check the default and computed expressions.
 		semaCtx := tree.MakeSemaContext()
 		semaCtx.TypeResolver = resolver
+		// TODO(otan): fix this up to resolve the same way type resolver is done.
+		semaCtx.FunctionResolver = flowCtx.EvalCtx.Planner
 		var err error
 		defaultExprs, err = schemaexpr.MakeDefaultExprs(
 			ctx, cb.added, &transform.ExprTransformContext{}, evalCtx, &semaCtx,

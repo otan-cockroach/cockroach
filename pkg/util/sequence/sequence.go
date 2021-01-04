@@ -11,6 +11,8 @@
 package sequence
 
 import (
+	"context"
+
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
@@ -22,11 +24,12 @@ import (
 // takes a sequence name as an arg. Returns the name of the sequence or nil
 // if no sequence was found.
 func GetSequenceFromFunc(funcExpr *tree.FuncExpr) (*string, error) {
-	searchPath := sessiondata.SearchPath{}
-
 	// Resolve doesn't use the searchPath for resolving FunctionDefinitions
 	// so we can pass in an empty SearchPath.
-	def, err := funcExpr.Func.Resolve(searchPath)
+	def, err := funcExpr.Func.Resolve(
+		context.TODO(),
+		tree.NewBuiltinFunctionResolver(sessiondata.SearchPath{}),
+	)
 	if err != nil {
 		return nil, err
 	}

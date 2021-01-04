@@ -642,6 +642,8 @@ func (sc *SchemaChanger) validateConstraints(
 				semaCtx := tree.MakeSemaContext()
 				collection := descs.NewCollection(sc.settings, sc.leaseMgr, nil /* hydratedTables */)
 				semaCtx.TypeResolver = descs.NewDistSQLTypeResolver(collection, txn)
+				// TODO(otan): fix this up to resolve the same way type resolver is done.
+				semaCtx.FunctionResolver = evalCtx.EvalContext.Planner
 				// TODO (rohany): When to release this? As of now this is only going to get released
 				//  after the check is validated.
 				defer func() { collection.ReleaseAll(ctx) }()

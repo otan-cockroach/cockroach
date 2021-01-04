@@ -474,7 +474,8 @@ func (tp *ObjectNamePrefix) Resolve(
 	return found, scMeta, err
 }
 
-// ResolveFunction transforms an UnresolvedName to a FunctionDefinition.
+// ResolveBuiltinFunction transforms an UnresolvedName to a FunctionDefinition
+// which is builtin to CockroachDB.
 //
 // Function resolution currently takes a "short path" using the
 // assumption that there are no stored functions in the database. That
@@ -487,7 +488,7 @@ func (tp *ObjectNamePrefix) Resolve(
 // TableName (or whatever an object name will be called by then)
 // and then undergo regular name resolution via ResolveExisting(). When
 // that happens, the following function can be removed.
-func (n *UnresolvedName) ResolveFunction(
+func (n *UnresolvedName) ResolveBuiltinFunction(
 	searchPath sessiondata.SearchPath,
 ) (*FunctionDefinition, error) {
 	if n.NumParts > 3 || len(n.Parts[0]) == 0 || n.Star {

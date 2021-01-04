@@ -49,6 +49,9 @@ type SemaContext struct {
 	// TypeResolver manages resolving type names into *types.T's.
 	TypeResolver TypeReferenceResolver
 
+	// FunctionResolver manages resolving function names into FunctionDefinitions.
+	FunctionResolver FunctionResolver
+
 	// AsOfTimestamp denotes the explicit AS OF SYSTEM TIME timestamp for the
 	// query, if any. If the query is not an AS OF SYSTEM TIME query,
 	// AsOfTimestamp is nil.
@@ -898,11 +901,7 @@ func CheckIsWindowOrAgg(def *FunctionDefinition) error {
 func (expr *FuncExpr) TypeCheck(
 	ctx context.Context, semaCtx *SemaContext, desired *types.T,
 ) (TypedExpr, error) {
-	var searchPath sessiondata.SearchPath
-	if semaCtx != nil {
-		searchPath = semaCtx.SearchPath
-	}
-	def, err := expr.Func.Resolve(searchPath)
+	def, err := expr.Func.Resolve(ctx, semaCtx.FunctionResolver)
 	if err != nil {
 		return nil, err
 	}

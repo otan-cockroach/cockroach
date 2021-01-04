@@ -156,7 +156,7 @@ func DeserializeExpr(
 		return deserializedExpr, err
 	}
 	var t transform.ExprTransformContext
-	if t.AggregateInExpr(deserializedExpr, evalCtx.SessionData.SearchPath) {
+	if t.AggregateInExpr(evalCtx.Context, semaCtx.FunctionResolver, deserializedExpr) {
 		return nil, errors.Errorf("expression '%s' has aggregate", deserializedExpr)
 	}
 	return deserializedExpr, nil

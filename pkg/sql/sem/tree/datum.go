@@ -4252,7 +4252,7 @@ func ParseDOid(ctx *EvalContext, s string, t *types.T) (*DOid, error) {
 		for i := 0; i < len(substrs); i++ {
 			name.Parts[i] = substrs[len(substrs)-1-i]
 		}
-		funcDef, err := name.ResolveFunction(ctx.SessionData.SearchPath)
+		funcDef, err := ctx.Planner.ResolveFunctionName(ctx.Context, &name)
 		if err != nil {
 			return nil, err
 		}

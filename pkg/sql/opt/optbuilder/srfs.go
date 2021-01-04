@@ -90,7 +90,7 @@ func (b *Builder) buildZip(exprs tree.Exprs, inScope *scope) (outScope *scope) {
 		// have to determine the output column name before we perform type
 		// checking. However, the alias may be overridden later below if the expression
 		// is a function and specifically defines a return label.
-		_, alias, err := tree.ComputeColNameInternal(b.semaCtx.SearchPath, expr)
+		_, alias, err := tree.ComputeColNameInternal(b.ctx, b.semaCtx, expr)
 		if err != nil {
 			panic(err)
 		}
@@ -98,7 +98,7 @@ func (b *Builder) buildZip(exprs tree.Exprs, inScope *scope) (outScope *scope) {
 
 		var def *tree.FunctionDefinition
 		if funcExpr, ok := texpr.(*tree.FuncExpr); ok {
-			if def, err = funcExpr.Func.Resolve(b.semaCtx.SearchPath); err != nil {
+			if def, err = funcExpr.Func.Resolve(b.ctx, b.semaCtx.FunctionResolver); err != nil {
 				panic(err)
 			}
 		}

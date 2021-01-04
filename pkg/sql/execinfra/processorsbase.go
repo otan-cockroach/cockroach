@@ -833,6 +833,8 @@ func (pb *ProcessorBase) InitWithEvalCtx(
 
 	pb.SemaCtx = tree.MakeSemaContext()
 	pb.SemaCtx.TypeResolver = resolver
+	// TODO(otan): fix this up to resolve the same way type resolver is done.
+	pb.SemaCtx.FunctionResolver = evalCtx.Planner
 
 	return pb.Out.Init(post, coreOutputTypes, &pb.SemaCtx, pb.EvalCtx, output)
 }

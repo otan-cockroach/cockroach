@@ -168,6 +168,13 @@ func (ep *DummyEvalPlanner) ResolveType(
 	return nil, errors.WithStack(errEvalPlanner)
 }
 
+// ResolveFunctionName implements the tree.FunctionResolver interface.
+func (ep *DummyEvalPlanner) ResolveFunctionName(
+	_ context.Context, _ *tree.UnresolvedName,
+) (*tree.FunctionDefinition, error) {
+	return nil, errors.WithStack(errEvalPlanner)
+}
+
 // DummyPrivilegedAccessor implements the tree.PrivilegedAccessor interface by returning errors.
 type DummyPrivilegedAccessor struct{}
 

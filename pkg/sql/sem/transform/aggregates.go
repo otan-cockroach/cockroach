@@ -11,15 +11,17 @@
 package transform
 
 import (
+	"context"
+
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 )
 
 // IsAggregateVisitor checks if walked expressions contain aggregate functions.
 type IsAggregateVisitor struct {
 	Aggregated bool
-	// searchPath is used to search for unqualified function names.
-	searchPath sessiondata.SearchPath
+
+	ctx          context.Context
+	functionResolver tree.FunctionResolver
 }
 
 var _ tree.Visitor = &IsAggregateVisitor{}
@@ -33,7 +35,7 @@ func (v *IsAggregateVisitor) VisitPre(expr tree.Expr) (recurse bool, newExpr tre
 			// aggregate function, but it can contain aggregate functions.
 			return true, expr
 		}
-		fd, err := t.Func.Resolve(v.searchPath)
+		fd, err := t.Func.Resolve(v.ctx, v.functionResolver)
 		if err != nil {
 			return false, expr
 		}

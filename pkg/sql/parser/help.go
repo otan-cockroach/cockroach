@@ -12,6 +12,7 @@ package parser
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"sort"
@@ -89,7 +90,10 @@ func helpWith(sqllex sqlLexer, helpText string) int {
 // "in error", with the error set to a contextual help message about
 // the current built-in function.
 func helpWithFunction(sqllex sqlLexer, f tree.ResolvableFunctionReference) int {
-	d, err := f.Resolve(sessiondata.SearchPath{})
+	d, err := f.Resolve(
+		context.TODO(),
+		tree.NewBuiltinFunctionResolver(sessiondata.SearchPath{}),
+	)
 	if err != nil {
 		return 1
 	}

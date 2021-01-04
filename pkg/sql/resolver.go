@@ -262,6 +262,13 @@ func (p *planner) ResolveType(
 	return tdesc.MakeTypesT(ctx, &tn, p)
 }
 
+// ResolveFunctionName implements the FunctionResolver interface
+func (p *planner) ResolveFunctionName(
+	ctx context.Context, name *tree.UnresolvedName,
+) (*tree.FunctionDefinition, error) {
+	return name.ResolveBuiltinFunction(p.semaCtx.SearchPath)
+}
+
 // ResolveTypeByOID implements the tree.TypeResolver interface.
 func (p *planner) ResolveTypeByOID(ctx context.Context, oid oid.Oid) (*types.T, error) {
 	name, desc, err := p.GetTypeDescriptor(ctx, typedesc.UserDefinedTypeOIDToID(oid))

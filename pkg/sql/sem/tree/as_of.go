@@ -19,7 +19,6 @@ import (
 	"github.com/cockroachdb/apd/v2"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgcode"
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/util/duration"
 	"github.com/cockroachdb/cockroach/pkg/util/hlc"
@@ -40,12 +39,12 @@ var errInvalidExprForAsOf = errors.Errorf("AS OF SYSTEM TIME: only constant expr
 
 // IsFollowerReadTimestampFunction determines whether the AS OF SYSTEM TIME
 // clause contains a simple invocation of the follower_read_timestamp function.
-func IsFollowerReadTimestampFunction(asOf AsOfClause, searchPath sessiondata.SearchPath) bool {
+func IsFollowerReadTimestampFunction(ctx context.Context, r FunctionResolver, asOf AsOfClause) bool {
 	fe, ok := asOf.Expr.(*FuncExpr)
 	if !ok {
 		return false
 	}
-	def, err := fe.Func.Resolve(searchPath)
+	def, err := fe.Func.Resolve(ctx, r)
 	if err != nil {
 		return false
 	}
@@ -70,7 +69,7 @@ func EvalAsOfTimestamp(
 	// string.
 	var te TypedExpr
 	if _, ok := asOf.Expr.(*FuncExpr); ok {
-		if !IsFollowerReadTimestampFunction(asOf, semaCtx.SearchPath) {
+		if !IsFollowerReadTimestampFunction(ctx, semaCtx.FunctionResolver, asOf) {
 			return hlc.Timestamp{}, errInvalidExprForAsOf
 		}
 		var err error

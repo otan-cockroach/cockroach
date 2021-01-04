@@ -1662,6 +1662,8 @@ func (df *DistSQLTypeResolverFactory) NewTypeResolver(txn *kv.Txn) DistSQLTypeRe
 func (df *DistSQLTypeResolverFactory) NewSemaContext(txn *kv.Txn) *tree.SemaContext {
 	semaCtx := tree.MakeSemaContext()
 	semaCtx.TypeResolver = df.NewTypeResolver(txn)
+	// TODO(otan): fix this up to resolve the same way type resolver is done.
+	semaCtx.FunctionResolver = tree.NewBuiltinFunctionResolver(sessiondata.SearchPath{})
 	return &semaCtx
 }
 

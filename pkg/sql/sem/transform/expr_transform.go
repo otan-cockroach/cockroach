@@ -11,8 +11,9 @@
 package transform
 
 import (
+	"context"
+
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
-	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 )
 
 // ExprTransformContext supports the methods that test expression
@@ -47,14 +48,15 @@ func (t *ExprTransformContext) NormalizeExpr(
 // should collect scalar properties (see tree.ScalarProperties) and
 // then the collected properties should be tested directly.
 func (t *ExprTransformContext) AggregateInExpr(
-	expr tree.Expr, searchPath sessiondata.SearchPath,
+	ctx context.Context, functionResolver tree.FunctionResolver, expr tree.Expr,
 ) bool {
 	if expr == nil {
 		return false
 	}
 
 	t.isAggregateVisitor = IsAggregateVisitor{
-		searchPath: searchPath,
+		ctx:          ctx,
+		functionResolver: functionResolver,
 	}
 	tree.WalkExprConst(&t.isAggregateVisitor, expr)
 	return t.isAggregateVisitor.Aggregated

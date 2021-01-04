@@ -11,12 +11,41 @@
 package tree
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
 	"github.com/cockroachdb/errors"
 )
+
+// FunctionResolver is an interface that provides the ability to lookup function
+// metadata.
+type FunctionResolver interface {
+	ResolveFunctionName(context.Context, *UnresolvedName) (*FunctionDefinition, error)
+}
+
+// BuiltinFunctionResolver is an implementation of FunctionResolver that only
+// resolves known builtins.
+type BuiltinFunctionResolver struct {
+	searchPath sessiondata.SearchPath
+}
+
+var _ FunctionResolver = &BuiltinFunctionResolver{}
+
+// NewBuiltinFunctionResolver returns a BuiltinFunctionResolver object.
+func NewBuiltinFunctionResolver(searchPath sessiondata.SearchPath) *BuiltinFunctionResolver {
+	return &BuiltinFunctionResolver{
+		searchPath: searchPath,
+	}
+}
+
+// ResolveFunctionName implements the FunctionResolver interface.
+func (b *BuiltinFunctionResolver) ResolveFunctionName(
+	ctx context.Context, n *UnresolvedName,
+) (*FunctionDefinition, error) {
+	return n.ResolveBuiltinFunction(b.searchPath)
+}
 
 // Function names are used in expressions in the FuncExpr node.
 // General syntax:
@@ -43,13 +72,13 @@ func (fn *ResolvableFunctionReference) String() string { return AsString(fn) }
 // Resolve checks if the function name is already resolved and
 // resolves it as necessary.
 func (fn *ResolvableFunctionReference) Resolve(
-	searchPath sessiondata.SearchPath,
+	ctx context.Context, r FunctionResolver,
 ) (*FunctionDefinition, error) {
 	switch t := fn.FunctionReference.(type) {
 	case *FunctionDefinition:
 		return t, nil
 	case *UnresolvedName:
-		fd, err := t.ResolveFunction(searchPath)
+		fd, err := r.ResolveFunctionName(ctx, t)
 		if err != nil {
 			return nil, err
 		}

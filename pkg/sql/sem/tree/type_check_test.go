@@ -18,6 +18,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/parser"
 	_ "github.com/cockroachdb/cockroach/pkg/sql/sem/builtins"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/sessiondata"
 	"github.com/cockroachdb/cockroach/pkg/sql/types"
 	"github.com/cockroachdb/cockroach/pkg/testutils"
 	"github.com/cockroachdb/cockroach/pkg/util/leaktest"
@@ -209,6 +210,7 @@ func TestTypeCheck(t *testing.T) {
 				t.Fatal(err)
 			}
 			semaCtx.TypeResolver = mapResolver
+			semaCtx.FunctionResolver = tree.NewBuiltinFunctionResolver(sessiondata.SearchPath{})
 			typeChecked, err := tree.TypeCheck(ctx, expr, &semaCtx, types.Any)
 			if err != nil {
 				t.Fatalf("%s: unexpected error %s", d.expr, err)
@@ -325,6 +327,7 @@ func TestTypeCheckError(t *testing.T) {
 			t.Run("semaCtx not nil", func(t *testing.T) {
 				semaCtx := tree.MakeSemaContext()
 				semaCtx.TypeResolver = mapResolver
+				semaCtx.FunctionResolver = tree.NewBuiltinFunctionResolver(sessiondata.SearchPath{})
 				expr, err := parser.ParseExpr(d.expr)
 				if err != nil {
 					t.Fatalf("%s: %v", d.expr, err)
