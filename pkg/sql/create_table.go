@@ -251,10 +251,10 @@ func (n *createTableNode) startExec(params runParams) error {
 
 	// Warn against creating non-partitioned indexes on a partitioned table,
 	// which is undesirable in most cases.
-	if n.n.PartitionBy != nil {
+	if n.n.PartitionByTable != nil {
 		for _, def := range n.n.Defs {
 			if d, ok := def.(*tree.IndexTableDef); ok {
-				if d.PartitionBy == nil {
+				if d.PartitionByIndex == nil {
 					params.p.BufferClientNotice(
 						params.ctx,
 						errors.WithHint(
@@ -1372,7 +1372,7 @@ func NewTableDesc(
 				if !sessionData.HashShardedIndexesEnabled {
 					return nil, hashShardedIndexesDisabledError
 				}
-				if n.PartitionBy != nil {
+				if n.PartitionByTable != nil {
 					return nil, pgerror.New(pgcode.FeatureNotSupported, "sharded indexes don't support partitioning")
 				}
 				if n.Interleave != nil {
@@ -1473,7 +1473,7 @@ func NewTableDesc(
 
 	var primaryIndexColumnSet map[string]struct{}
 	setupShardedIndexForNewTable := func(d *tree.IndexTableDef, idx *descpb.IndexDescriptor) error {
-		if n.PartitionBy != nil {
+		if n.PartitionByTable != nil {
 			return pgerror.New(pgcode.FeatureNotSupported, "sharded indexes don't support partitioning")
 		}
 		shardCol, newColumn, err := setupShardedIndex(
@@ -1553,8 +1553,8 @@ func NewTableDesc(
 					idx.GeoConfig = *geoindex.DefaultGeographyIndexConfig()
 				}
 			}
-			if d.PartitionBy != nil {
-				partitioning, err := CreatePartitioning(ctx, st, evalCtx, &desc, &idx, d.PartitionBy)
+			if d.PartitionByIndex != nil {
+				partitioning, err := CreatePartitioning(ctx, st, evalCtx, &desc, &idx, d.PartitionByIndex.PartitionBy)
 				if err != nil {
 					return nil, err
 				}
@@ -1606,8 +1606,8 @@ func NewTableDesc(
 			if err := idx.FillColumns(d.Columns); err != nil {
 				return nil, err
 			}
-			if d.PartitionBy != nil {
-				partitioning, err := CreatePartitioning(ctx, st, evalCtx, &desc, &idx, d.PartitionBy)
+			if d.PartitionByIndex != nil {
+				partitioning, err := CreatePartitioning(ctx, st, evalCtx, &desc, &idx, d.PartitionByIndex.PartitionBy)
 				if err != nil {
 					return nil, err
 				}
@@ -1714,9 +1714,12 @@ func NewTableDesc(
 		}
 	}
 
-	if n.PartitionBy != nil {
+	if n.PartitionByTable != nil {
+		if n.PartitionByTable.All {
+			return nil, unimplemented.New("CREATE TABLE PARTITION ALL BY", "PARTITION ALL BY not yet implemented")
+		}
 		partitioning, err := CreatePartitioning(
-			ctx, st, evalCtx, &desc, desc.GetPrimaryIndex(), n.PartitionBy)
+			ctx, st, evalCtx, &desc, desc.GetPrimaryIndex(), n.PartitionByTable.PartitionBy)
 		if err != nil {
 			return nil, err
 		}
@@ -1809,7 +1812,7 @@ func NewTableDesc(
 						"interleaved unique constraints without an index are not supported",
 					)
 				}
-				if d.PartitionBy != nil {
+				if d.PartitionByIndex != nil {
 					return nil, pgerror.New(pgcode.FeatureNotSupported,
 						"partitioned unique constraints without an index are not supported",
 					)
