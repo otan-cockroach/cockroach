@@ -427,16 +427,17 @@ func (n *createIndexNode) startExec(params runParams) error {
 	}
 	indexDesc.Version = encodingVersion
 
-	var partitionByAll *tree.PartitionBy
+	// For PARTITION ALL BY tables, implicitly add any requisite columns in front if required.
+	var partitionAllBy *tree.PartitionBy
 	if n.tableDesc.IsPartitionAllBy() {
-		partitionByAll, err = partitionByFromTableDesc(params.p.ExecCfg().Codec, n.tableDesc)
+		partitionAllBy, err = partitionByFromTableDesc(params.p.ExecCfg().Codec, n.tableDesc)
 		if err != nil {
 			return err
 		}
 	}
-	if n.n.PartitionByIndex.ContainsPartitions() || partitionByAll != nil {
-		partitionBy := partitionByAll
-		if partitionByAll == nil {
+	if n.n.PartitionByIndex.ContainsPartitions() || partitionAllBy != nil {
+		partitionBy := partitionAllBy
+		if partitionAllBy == nil {
 			partitionBy = n.n.PartitionByIndex.PartitionBy
 		} else if n.n.PartitionByIndex.ContainsPartitions() {
 			return pgerror.New(
@@ -500,6 +501,56 @@ func (n *createIndexNode) startExec(params runParams) error {
 	// Add all newly created type back references.
 	if err := params.p.addBackRefsFromAllTypesInTable(params.ctx, n.tableDesc); err != nil {
 		return err
+	}
+
+	// For REGIONAL BY ROW tables, correctly configure relevant zone configurations.
+	if n.tableDesc.LocalityConfig != nil {
+		switch n.tableDesc.LocalityConfig.Locality.(type) {
+		case *descpb.TableDescriptor_LocalityConfig_RegionalByRow_:
+			dbDesc, err := params.p.Descriptors().GetImmutableDatabaseByID(
+				params.ctx,
+				params.p.txn,
+				n.tableDesc.ParentID,
+				tree.DatabaseLookupFlags{},
+			)
+			if err != nil {
+				return errors.Wrap(err, "error resolving database for multi-region table")
+			}
+			schemaDesc, err := params.p.Descriptors().GetImmutableSchemaByID(
+				params.ctx,
+				params.p.txn,
+				n.tableDesc.GetParentSchemaID(),
+				tree.SchemaLookupFlags{},
+			)
+			if err != nil {
+				return errors.Wrap(err, "error resolving database for multi-region table")
+			}
+			explicitTblName := tree.MakeTableNameWithSchema(
+				tree.Name(dbDesc.Name),
+				tree.Name(schemaDesc.Name),
+				tree.Name(n.tableDesc.Name),
+			)
+			for _, region := range dbDesc.RegionConfig.Regions {
+				zc, err := zoneConfigFromRegionConfigForPartition(region, *dbDesc.RegionConfig)
+				if err != nil {
+					return err
+				}
+				if err := params.p.applyZoneConfigForMultiRegion(
+					params.ctx,
+					tree.ZoneSpecifier{
+						TableOrIndex: tree.TableIndexName{
+							Table: explicitTblName,
+							Index: tree.UnrestrictedName(indexName),
+						},
+						Partition: tree.Name(region.Name),
+					},
+					zc,
+					"index-multiregion-set-zone-config",
+				); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	// Record index creation in the event log. This is an auditable log
