@@ -585,7 +585,7 @@ func (p *planner) configureZoneConfigForNewIndexPartitioning(
 			p.ExecCfg(),
 			*dbDesc.RegionConfig,
 			tableDesc,
-			applyZoneConfigForMultiRegionTableOptionNewIndex(indexDesc.ID),
+			applyZoneConfigForMultiRegionTableOptionNewIndexes(indexDesc.ID),
 		); err != nil {
 			return err
 		}

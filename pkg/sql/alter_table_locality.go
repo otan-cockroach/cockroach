@@ -24,6 +24,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
 	"github.com/cockroachdb/cockroach/pkg/util/log/eventpb"
 	"github.com/cockroachdb/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 type alterTableSetLocalityNode struct {
@@ -154,6 +155,60 @@ func (n *alterTableSetLocalityNode) alterTableLocalityRegionalByTableToRegionalB
 	return nil
 }
 
+func (n *alterTableSetLocalityNode) alterTableLocalityNonRegionalByRowToRegionalByRow(
+	params runParams,
+	existingLocality *descpb.TableDescriptor_LocalityConfig,
+	newLocality *tree.Locality,
+) error {
+	if newLocality.RegionalByRowColumn == "" {
+		return unimplemented.New("alter table locality to REGIONAL BY ROW", "implementation pending")
+	}
+
+	// Preserve the same PK columns - implicit partitioning will be added in AlterPrimaryKey.
+	cols := make([]tree.IndexElem, len(n.tableDesc.PrimaryIndex.ColumnNames))
+	for i, col := range n.tableDesc.PrimaryIndex.ColumnNames {
+		cols[i] = tree.IndexElem{
+			Column: tree.Name(col),
+		}
+		switch dir := n.tableDesc.PrimaryIndex.ColumnDirections[i]; dir {
+		case descpb.IndexDescriptor_ASC:
+			cols[i].Direction = tree.Ascending
+		case descpb.IndexDescriptor_DESC:
+			cols[i].Direction = tree.Descending
+		default:
+			return errors.AssertionFailedf("unknown direction: %v", dir)
+		}
+	}
+
+	if err := params.p.AlterPrimaryKey(
+		params.ctx,
+		n.tableDesc,
+		&tree.AlterTableAlterPrimaryKey{
+			Name:    tree.Name(n.tableDesc.PrimaryIndex.Name),
+			Columns: cols,
+		},
+		&descpb.PrimaryKeySwap_LocalityConfigSwap{
+			OldLocalityConfig: existingLocality,
+			NewLocalityConfig: &descpb.TableDescriptor_LocalityConfig{
+				Locality: &descpb.TableDescriptor_LocalityConfig_RegionalByRow_{
+					RegionalByRow: &descpb.TableDescriptor_LocalityConfig_RegionalByRow{
+						As: proto.String(string(newLocality.RegionalByRowColumn)),
+					},
+				},
+			},
+		},
+	); err != nil {
+		return err
+	}
+
+	return params.p.writeSchemaChange(
+		params.ctx,
+		n.tableDesc,
+		n.tableDesc.ClusterVersion.NextMutationID,
+		tree.AsStringWithFQNames(&n.n, params.Ann()),
+	)
+}
+
 func (n *alterTableSetLocalityNode) startExec(params runParams) error {
 	// Ensure that the database is multi-region enabled.
 	dbDesc, err := params.p.Descriptors().GetImmutableDatabaseByID(
@@ -184,8 +239,13 @@ func (n *alterTableSetLocalityNode) startExec(params runParams) error {
 			// GLOBAL to GLOBAL - no op.
 			return nil
 		case tree.LocalityLevelRow:
-			// GLOBAL to REGIONAL BY ROW
-			return unimplemented.New("alter table locality to REGIONAL BY ROW", "implementation pending")
+			if err := n.alterTableLocalityNonRegionalByRowToRegionalByRow(
+				params,
+				existingLocality,
+				newLocality,
+			); err != nil {
+				return err
+			}
 		case tree.LocalityLevelTable:
 			if err = n.alterTableLocalityGlobalToRegionalByTable(params, dbDesc); err != nil {
 				return err
@@ -201,7 +261,13 @@ func (n *alterTableSetLocalityNode) startExec(params runParams) error {
 				return err
 			}
 		case tree.LocalityLevelRow:
-			return unimplemented.New("alter table locality to REGIONAL BY ROW", "implementation pending")
+			if err := n.alterTableLocalityNonRegionalByRowToRegionalByRow(
+				params,
+				existingLocality,
+				newLocality,
+			); err != nil {
+				return err
+			}
 		case tree.LocalityLevelTable:
 			err = n.alterTableLocalityRegionalByTableToRegionalByTable(params, dbDesc)
 			if err != nil {
@@ -215,7 +281,6 @@ func (n *alterTableSetLocalityNode) startExec(params runParams) error {
 		case tree.LocalityLevelGlobal:
 			return unimplemented.New("alter table locality from REGIONAL BY ROW", "implementation pending")
 		case tree.LocalityLevelRow:
-			// Altering to same table locality pattern. We're done.
 			return unimplemented.New("alter table locality from REGIONAL BY ROW", "implementation pending")
 		case tree.LocalityLevelTable:
 			return unimplemented.New("alter table locality from REGIONAL BY ROW", "implementation pending")

@@ -199,7 +199,12 @@ func (n *alterTableNode) startExec(params runParams) error {
 						Interleave: d.Interleave,
 						Name:       d.Name,
 					}
-					if err := params.p.AlterPrimaryKey(params.ctx, n.tableDesc, alterPK); err != nil {
+					if err := params.p.AlterPrimaryKey(
+						params.ctx,
+						n.tableDesc,
+						alterPK,
+						nil, /* localityConfigSwap */
+					); err != nil {
 						return err
 					}
 					continue
@@ -357,7 +362,12 @@ func (n *alterTableNode) startExec(params runParams) error {
 			}
 
 		case *tree.AlterTableAlterPrimaryKey:
-			if err := params.p.AlterPrimaryKey(params.ctx, n.tableDesc, t); err != nil {
+			if err := params.p.AlterPrimaryKey(
+				params.ctx,
+				n.tableDesc,
+				t,
+				nil, /* localityConfigSwap */
+			); err != nil {
 				return err
 			}
 			// Mark descriptorChanged so that a mutation job is scheduled at the end of startExec.

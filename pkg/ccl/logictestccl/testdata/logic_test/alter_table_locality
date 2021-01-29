@@ -297,6 +297,89 @@ TABLE global  ALTER TABLE global CONFIGURE ZONE USING
 statement error unimplemented: implementation pending
 ALTER TABLE global SET LOCALITY REGIONAL BY ROW
 
+# Drop the table and recreate it with columns appropriate for REGIONAL BY ROW transformations.
+statement ok
+DROP TABLE global;
+CREATE TABLE global (i int, b int, index(b), unique(i), cr crdb_internal_region) LOCALITY GLOBAL;
+INSERT INTO global VALUES (1, 2, 'us-east-1')
+
+statement error unimplemented: implementation pending
+ALTER TABLE global SET LOCALITY REGIONAL BY ROW
+
+statement error cannot perform a locality change on global with other schema changes on global in the same transaction
+BEGIN;
+ALTER TABLE global ADD COLUMN c INT;
+ALTER TABLE global SET LOCALITY REGIONAL BY ROW AS "cr"
+
+statement ok
+ROLLBACK;
+ALTER TABLE global SET LOCALITY REGIONAL BY ROW AS "cr"
+
+query TT
+SHOW CREATE TABLE global
+----
+global  CREATE TABLE public.global (
+        i INT8 NULL,
+        b INT8 NULL,
+        cr public.crdb_internal_region NULL,
+        CONSTRAINT "primary" PRIMARY KEY (rowid ASC),
+        INDEX global_b_idx (b ASC),
+        UNIQUE INDEX global_i_key (i ASC),
+        FAMILY fam_0_b_rowid (b, rowid),
+        FAMILY fam_1_cr (cr),
+        FAMILY fam_2_i (i)
+) LOCALITY REGIONAL BY ROW AS cr;
+ALTER TABLE alter_locality_test.public.global CONFIGURE ZONE USING
+  global_reads = true;
+ALTER PARTITION "ap-southeast-2" OF INDEX alter_locality_test.public.global@primary CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ap-southeast-2: 3}',
+  lease_preferences = '[[+region=ap-southeast-2]]';
+ALTER PARTITION "ca-central-1" OF INDEX alter_locality_test.public.global@primary CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ca-central-1: 3}',
+  lease_preferences = '[[+region=ca-central-1]]';
+ALTER PARTITION "us-east-1" OF INDEX alter_locality_test.public.global@primary CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=us-east-1: 3}',
+  lease_preferences = '[[+region=us-east-1]]';
+ALTER PARTITION "ap-southeast-2" OF INDEX alter_locality_test.public.global@global_b_idx CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ap-southeast-2: 3}',
+  lease_preferences = '[[+region=ap-southeast-2]]';
+ALTER PARTITION "ca-central-1" OF INDEX alter_locality_test.public.global@global_b_idx CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ca-central-1: 3}',
+  lease_preferences = '[[+region=ca-central-1]]';
+ALTER PARTITION "us-east-1" OF INDEX alter_locality_test.public.global@global_b_idx CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=us-east-1: 3}',
+  lease_preferences = '[[+region=us-east-1]]';
+ALTER PARTITION "ap-southeast-2" OF INDEX alter_locality_test.public.global@global_i_key CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ap-southeast-2: 3}',
+  lease_preferences = '[[+region=ap-southeast-2]]';
+ALTER PARTITION "ca-central-1" OF INDEX alter_locality_test.public.global@global_i_key CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ca-central-1: 3}',
+  lease_preferences = '[[+region=ca-central-1]]';
+ALTER PARTITION "us-east-1" OF INDEX alter_locality_test.public.global@global_i_key CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=us-east-1: 3}',
+  lease_preferences = '[[+region=us-east-1]]'
+
+query TT
+SHOW ZONE CONFIGURATION FOR TABLE global
+----
+TABLE global  ALTER TABLE global CONFIGURE ZONE USING
+              range_min_bytes = 134217728,
+              range_max_bytes = 536870912,
+              gc.ttlseconds = 90000,
+              global_reads = true,
+              num_replicas = 3,
+              constraints = '{+region=ap-southeast-2: 1, +region=ca-central-1: 1, +region=us-east-1: 1}',
+              lease_preferences = '[[+region=ca-central-1]]'
+
 statement error region "invalid-region" has not been added to database "alter_locality_test"
 ALTER TABLE regional_by_table_in_primary_region SET LOCALITY REGIONAL BY TABLE in "invalid-region"
 
@@ -527,16 +610,82 @@ TABLE regional_by_table_no_region  ALTER TABLE regional_by_table_no_region CONFI
                                    constraints = '{+region=ap-southeast-2: 1, +region=ca-central-1: 1, +region=us-east-1: 1}',
                                    lease_preferences = '[[+region=ca-central-1]]'
 
-# Drop the table and recreate it to get back to original state (this is required because alter table
-# from global to regional by table is not yet implemented).
+# Drop the table and recreate it with columns appropriate for REGIONAL BY ROW transformations.
 statement ok
-DROP TABLE regional_by_table_no_region
-
-statement ok
-CREATE TABLE regional_by_table_no_region (i int) LOCALITY REGIONAL BY TABLE
+DROP TABLE regional_by_table_no_region;
+CREATE TABLE regional_by_table_no_region (i int, b int, index(b), unique(i), cr crdb_internal_region) LOCALITY REGIONAL BY TABLE;
+INSERT INTO regional_by_table_no_region VALUES (1, 2, 'us-east-1')
 
 statement error unimplemented: implementation pending
 ALTER TABLE regional_by_table_no_region SET LOCALITY REGIONAL BY ROW
+
+statement ok
+ALTER TABLE regional_by_table_no_region SET LOCALITY REGIONAL BY ROW AS "cr"
+
+query TT
+SHOW CREATE TABLE regional_by_table_no_region
+----
+regional_by_table_no_region  CREATE TABLE public.regional_by_table_no_region (
+                             i INT8 NULL,
+                             b INT8 NULL,
+                             cr public.crdb_internal_region NULL,
+                             CONSTRAINT "primary" PRIMARY KEY (rowid ASC),
+                             INDEX regional_by_table_no_region_b_idx (b ASC),
+                             UNIQUE INDEX regional_by_table_no_region_i_key (i ASC),
+                             FAMILY fam_0_cr_rowid (cr, rowid),
+                             FAMILY fam_1_b (b),
+                             FAMILY fam_2_i (i)
+) LOCALITY REGIONAL BY ROW AS cr;
+ALTER TABLE alter_locality_test.public.regional_by_table_no_region CONFIGURE ZONE USING
+  constraints = '[]',
+  lease_preferences = '[]';
+ALTER PARTITION "ap-southeast-2" OF INDEX alter_locality_test.public.regional_by_table_no_region@primary CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ap-southeast-2: 3}',
+  lease_preferences = '[[+region=ap-southeast-2]]';
+ALTER PARTITION "ca-central-1" OF INDEX alter_locality_test.public.regional_by_table_no_region@primary CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ca-central-1: 3}',
+  lease_preferences = '[[+region=ca-central-1]]';
+ALTER PARTITION "us-east-1" OF INDEX alter_locality_test.public.regional_by_table_no_region@primary CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=us-east-1: 3}',
+  lease_preferences = '[[+region=us-east-1]]';
+ALTER PARTITION "ap-southeast-2" OF INDEX alter_locality_test.public.regional_by_table_no_region@regional_by_table_no_region_b_idx CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ap-southeast-2: 3}',
+  lease_preferences = '[[+region=ap-southeast-2]]';
+ALTER PARTITION "ca-central-1" OF INDEX alter_locality_test.public.regional_by_table_no_region@regional_by_table_no_region_b_idx CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ca-central-1: 3}',
+  lease_preferences = '[[+region=ca-central-1]]';
+ALTER PARTITION "us-east-1" OF INDEX alter_locality_test.public.regional_by_table_no_region@regional_by_table_no_region_b_idx CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=us-east-1: 3}',
+  lease_preferences = '[[+region=us-east-1]]';
+ALTER PARTITION "ap-southeast-2" OF INDEX alter_locality_test.public.regional_by_table_no_region@regional_by_table_no_region_i_key CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ap-southeast-2: 3}',
+  lease_preferences = '[[+region=ap-southeast-2]]';
+ALTER PARTITION "ca-central-1" OF INDEX alter_locality_test.public.regional_by_table_no_region@regional_by_table_no_region_i_key CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ca-central-1: 3}',
+  lease_preferences = '[[+region=ca-central-1]]';
+ALTER PARTITION "us-east-1" OF INDEX alter_locality_test.public.regional_by_table_no_region@regional_by_table_no_region_i_key CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=us-east-1: 3}',
+  lease_preferences = '[[+region=us-east-1]]'
+
+query TT
+SHOW ZONE CONFIGURATION FOR TABLE regional_by_table_no_region
+----
+TABLE regional_by_table_no_region  ALTER TABLE regional_by_table_no_region CONFIGURE ZONE USING
+                                   range_min_bytes = 134217728,
+                                   range_max_bytes = 536870912,
+                                   gc.ttlseconds = 90000,
+                                   num_replicas = 3,
+                                   constraints = '[]',
+                                   lease_preferences = '[]'
 
 statement ok
 ALTER TABLE regional_by_table_in_us_east SET LOCALITY REGIONAL BY TABLE
@@ -633,16 +782,84 @@ TABLE regional_by_table_in_us_east  ALTER TABLE regional_by_table_in_us_east CON
                                     constraints = '{+region=ap-southeast-2: 1, +region=ca-central-1: 1, +region=us-east-1: 1}',
                                     lease_preferences = '[[+region=ca-central-1]]'
 
-# Drop the table and recreate it to get back to original state (this is required because alter table
-# from global to regional by table is not yet implemented).
+# Drop the table and recreate it with columns appropriate for REGIONAL BY ROW transformations.
 statement ok
-DROP TABLE regional_by_table_in_us_east
-
-statement ok
-CREATE TABLE regional_by_table_in_us_east (i int) LOCALITY REGIONAL BY TABLE IN "us-east-1"
+DROP TABLE regional_by_table_in_us_east;
+CREATE TABLE regional_by_table_in_us_east (i int, b int, index(b), unique(i), cr crdb_internal_region) LOCALITY REGIONAL BY TABLE IN "us-east-1";
+INSERT INTO regional_by_table_in_us_east VALUES (1, 2, 'us-east-1')
 
 statement error unimplemented: implementation pending
 ALTER TABLE regional_by_table_in_us_east SET LOCALITY REGIONAL BY ROW
+
+statement ok
+ALTER TABLE regional_by_table_in_us_east SET LOCALITY REGIONAL BY ROW AS "cr"
+
+query TT
+SHOW CREATE TABLE regional_by_table_in_us_east
+----
+regional_by_table_in_us_east  CREATE TABLE public.regional_by_table_in_us_east (
+                              i INT8 NULL,
+                              b INT8 NULL,
+                              cr public.crdb_internal_region NULL,
+                              CONSTRAINT "primary" PRIMARY KEY (rowid ASC),
+                              INDEX regional_by_table_in_us_east_b_idx (b ASC),
+                              UNIQUE INDEX regional_by_table_in_us_east_i_key (i ASC),
+                              FAMILY fam_0_i_rowid (i, rowid),
+                              FAMILY fam_1_b (b),
+                              FAMILY fam_2_cr (cr)
+) LOCALITY REGIONAL BY ROW AS cr;
+ALTER TABLE alter_locality_test.public.regional_by_table_in_us_east CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=us-east-1: 3}',
+  lease_preferences = '[[+region=us-east-1]]';
+ALTER PARTITION "ap-southeast-2" OF INDEX alter_locality_test.public.regional_by_table_in_us_east@primary CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ap-southeast-2: 3}',
+  lease_preferences = '[[+region=ap-southeast-2]]';
+ALTER PARTITION "ca-central-1" OF INDEX alter_locality_test.public.regional_by_table_in_us_east@primary CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ca-central-1: 3}',
+  lease_preferences = '[[+region=ca-central-1]]';
+ALTER PARTITION "us-east-1" OF INDEX alter_locality_test.public.regional_by_table_in_us_east@primary CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=us-east-1: 3}',
+  lease_preferences = '[[+region=us-east-1]]';
+ALTER PARTITION "ap-southeast-2" OF INDEX alter_locality_test.public.regional_by_table_in_us_east@regional_by_table_in_us_east_b_idx CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ap-southeast-2: 3}',
+  lease_preferences = '[[+region=ap-southeast-2]]';
+ALTER PARTITION "ca-central-1" OF INDEX alter_locality_test.public.regional_by_table_in_us_east@regional_by_table_in_us_east_b_idx CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ca-central-1: 3}',
+  lease_preferences = '[[+region=ca-central-1]]';
+ALTER PARTITION "us-east-1" OF INDEX alter_locality_test.public.regional_by_table_in_us_east@regional_by_table_in_us_east_b_idx CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=us-east-1: 3}',
+  lease_preferences = '[[+region=us-east-1]]';
+ALTER PARTITION "ap-southeast-2" OF INDEX alter_locality_test.public.regional_by_table_in_us_east@regional_by_table_in_us_east_i_key CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ap-southeast-2: 3}',
+  lease_preferences = '[[+region=ap-southeast-2]]';
+ALTER PARTITION "ca-central-1" OF INDEX alter_locality_test.public.regional_by_table_in_us_east@regional_by_table_in_us_east_i_key CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=ca-central-1: 3}',
+  lease_preferences = '[[+region=ca-central-1]]';
+ALTER PARTITION "us-east-1" OF INDEX alter_locality_test.public.regional_by_table_in_us_east@regional_by_table_in_us_east_i_key CONFIGURE ZONE USING
+  num_replicas = 3,
+  constraints = '{+region=us-east-1: 3}',
+  lease_preferences = '[[+region=us-east-1]]'
+
+query TT
+SHOW ZONE CONFIGURATION FOR TABLE regional_by_table_in_us_east
+----
+TABLE regional_by_table_in_us_east  ALTER TABLE regional_by_table_in_us_east CONFIGURE ZONE USING
+                                    range_min_bytes = 134217728,
+                                    range_max_bytes = 536870912,
+                                    gc.ttlseconds = 90000,
+                                    num_replicas = 3,
+                                    constraints = '{+region=us-east-1: 3}',
+                                    lease_preferences = '[[+region=us-east-1]]'
+
 
 # Set a table with a gc.ttlseconds to be a non-default value, and check this is
 # the same after a change to REGIONAL BY TABLE IN PRIMARY REGION, which truncates
