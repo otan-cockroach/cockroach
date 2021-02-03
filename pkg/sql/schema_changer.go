@@ -1188,6 +1188,9 @@ func (sc *SchemaChanger) done(ctx context.Context) error {
 							),
 						)
 						switch lcSwap.NewLocalityConfig.Locality.(type) {
+						case *descpb.TableDescriptor_LocalityConfig_Global_,
+							*descpb.TableDescriptor_LocalityConfig_RegionalByTable_:
+						// Just the table re-write locality config change will suffice.
 						case *descpb.TableDescriptor_LocalityConfig_RegionalByRow_:
 							// Apply new zone configurations for all newly partitioned indexes.
 							opts = append(
@@ -1305,9 +1308,9 @@ func (sc *SchemaChanger) done(ctx context.Context) error {
 						newConfig = &lcSwap.OldLocalityConfig
 					}
 					scTable.LocalityConfig = newConfig
-					switch newConfig.Locality.(type) {
-					case *descpb.TableDescriptor_LocalityConfig_RegionalByTable_,
-						*descpb.TableDescriptor_LocalityConfig_Global_:
+					switch lcSwap.NewLocalityConfig.Locality.(type) {
+					case *descpb.TableDescriptor_LocalityConfig_Global_,
+						*descpb.TableDescriptor_LocalityConfig_RegionalByTable_:
 						scTable.PartitionAllBy = false
 					case *descpb.TableDescriptor_LocalityConfig_RegionalByRow_:
 						scTable.PartitionAllBy = true

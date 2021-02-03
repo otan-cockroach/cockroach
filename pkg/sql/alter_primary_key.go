@@ -288,6 +288,12 @@ func (p *planner) AlterPrimaryKey(
 					localityConfigSwap.NewLocalityConfig.Locality,
 				)
 			}
+		case *descpb.TableDescriptor_LocalityConfig_RegionalByRow_:
+			switch localityConfigSwap.NewLocalityConfig.Locality.(type) {
+			case *descpb.TableDescriptor_LocalityConfig_Global_,
+				*descpb.TableDescriptor_LocalityConfig_RegionalByTable_:
+				// We don't want a partition anymore, so do nothing.
+			}
 		default:
 			return errors.AssertionFailedf(
 				"unknown locality config swap: %T to %T",
