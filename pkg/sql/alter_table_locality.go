@@ -22,6 +22,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/sql/pgwire/pgerror"
 	"github.com/cockroachdb/cockroach/pkg/sql/privilege"
 	"github.com/cockroachdb/cockroach/pkg/sql/sem/tree"
+	"github.com/cockroachdb/cockroach/pkg/sql/sqlerrors"
 	"github.com/cockroachdb/cockroach/pkg/util/errorutil/unimplemented"
 	"github.com/cockroachdb/cockroach/pkg/util/log/eventpb"
 	"github.com/cockroachdb/errors"
@@ -180,26 +181,71 @@ func (n *alterTableSetLocalityNode) alterTableLocalityNonRegionalByRowToRegional
 	existingLocality *descpb.TableDescriptor_LocalityConfig,
 	newLocality *tree.Locality,
 ) error {
-	if newLocality.RegionalByRowColumn == tree.RegionalByRowRegionNotSpecifiedName {
-		return unimplemented.NewWithIssue(59632, "implementation pending")
-	}
-
-	// Ensure column exists and is of the correct type.
-	partCol, _, err := n.tableDesc.FindColumnByName(newLocality.RegionalByRowColumn)
-	if err != nil {
-		return err
-	}
 	enumTypeID, err := n.dbDesc.MultiRegionEnumID()
 	if err != nil {
 		return err
 	}
-	if partCol.Type.Oid() != typedesc.TypeIDToOID(enumTypeID) {
-		return pgerror.Newf(
-			pgcode.InvalidTableDefinition,
-			"cannot use column %s for REGIONAL BY ROW as it does not have the %s type",
-			newLocality.RegionalByRowColumn,
-			tree.RegionEnum,
-		)
+	enumOID := typedesc.TypeIDToOID(enumTypeID)
+
+	createDefaultRegionCol := false
+	var allowMutationOnSameTxnIdx *int
+
+	// Check if the region column exists already - if so, use it.
+	// Otherwise, if we have no name was specified, implicitly create the
+	// crdb_region column.
+	partColName := newLocality.RegionalByRowColumn
+	if newLocality.RegionalByRowColumn == tree.RegionalByRowRegionNotSpecifiedName {
+		partColName = tree.RegionalByRowRegionDefaultColName
+	}
+	partCol, _, err := n.tableDesc.FindColumnByName(partColName)
+	if err != nil {
+		if !sqlerrors.IsUndefinedColumnError(err) ||
+			newLocality.RegionalByRowColumn != tree.RegionalByRowRegionNotSpecifiedName {
+			return err
+		}
+		createDefaultRegionCol = true
+	}
+
+	if createDefaultRegionCol {
+		defaultColDef := &tree.AlterTableAddColumn{
+			ColumnDef: regionalByRowDefaultColDef(enumOID),
+		}
+		tn, err := params.p.getQualifiedTableName(params.ctx, n.tableDesc)
+		if err != nil {
+			return err
+		}
+		if err := params.p.addColumnImpl(
+			params,
+			&alterTableNode{
+				tableDesc: n.tableDesc,
+				n: &tree.AlterTable{
+					Cmds: []tree.AlterTableCmd{defaultColDef},
+				},
+			},
+			tn,
+			n.tableDesc,
+			defaultColDef,
+			params.SessionData(),
+		); err != nil {
+			return err
+		}
+
+		// Allow add column mutation to be on the same mutation ID in AlterPrimaryKey.
+		mutationIdx := len(n.tableDesc.GetMutations()) - 1
+		allowMutationOnSameTxnIdx = &mutationIdx
+
+		if err := n.tableDesc.AllocateIDs(params.ctx); err != nil {
+			return err
+		}
+	} else {
+		if partCol.Type.Oid() != enumOID {
+			return pgerror.Newf(
+				pgcode.InvalidTableDefinition,
+				"cannot use column %s for REGIONAL BY ROW as it does not have the %s type",
+				partColName,
+				tree.RegionEnum,
+			)
+		}
 	}
 
 	// Preserve the same PK columns - implicit partitioning will be added in
@@ -234,11 +280,14 @@ func (n *alterTableSetLocalityNode) alterTableLocalityNonRegionalByRowToRegional
 			Name:    tree.Name(n.tableDesc.PrimaryIndex.Name),
 			Columns: cols,
 		},
-		&descpb.PrimaryKeySwap_LocalityConfigSwap{
-			OldLocalityConfig: *existingLocality,
-			NewLocalityConfig: tabledesc.LocalityConfigRegionalByRow(
-				newLocality.RegionalByRowColumn,
-			),
+		&alterPrimaryKeyLocalitySwap{
+			localityConfigSwap: descpb.PrimaryKeySwap_LocalityConfigSwap{
+				OldLocalityConfig: *existingLocality,
+				NewLocalityConfig: tabledesc.LocalityConfigRegionalByRow(
+					newLocality.RegionalByRowColumn,
+				),
+			},
+			allowMutationOnSameTxnIdx: allowMutationOnSameTxnIdx,
 		},
 	); err != nil {
 		return err

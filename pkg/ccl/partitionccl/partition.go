@@ -183,7 +183,7 @@ func createPartitioningImpl(
 		}
 		// Search by name because some callsites of this method have not
 		// allocated ids yet (so they are still all the 0 value).
-		col, err := tableDesc.FindActiveColumnByName(indexDesc.ColumnNames[colOffset+i])
+		col, err := tableDesc.FindActiveOrNewColumnByName(tree.Name(indexDesc.ColumnNames[colOffset+i]))
 		if err != nil {
 			return partDesc, err
 		}
@@ -276,7 +276,7 @@ func detectImplicitPartitionColumns(
 			break
 		}
 
-		col, err := tableDesc.FindActiveColumnByName(string(field))
+		col, err := tableDesc.FindActiveOrNewColumnByName(tree.Name(field))
 		if err != nil {
 			return indexDesc, 0, err
 		}

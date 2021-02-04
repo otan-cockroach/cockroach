@@ -1557,20 +1557,7 @@ func NewTableDesc(
 				)
 			}
 			oid := typedesc.TypeIDToOID(dbDesc.RegionConfig.RegionEnumID)
-			// TODO(#59630): set the column visibility to be hidden.
-			c := &tree.ColumnTableDef{
-				Name: tree.RegionalByRowRegionDefaultColName,
-				Type: &tree.OIDTypeReference{OID: oid},
-			}
-			c.Nullable.Nullability = tree.NotNull
-			c.DefaultExpr.Expr = &tree.CastExpr{
-				Expr: &tree.FuncExpr{
-					Func: tree.WrapFunction("gateway_region"),
-				},
-				Type:       &tree.OIDTypeReference{OID: oid},
-				SyntaxMode: tree.CastShort,
-			}
-			n.Defs = append(n.Defs, c)
+			n.Defs = append(n.Defs, regionalByRowDefaultColDef(oid))
 			columnDefaultExprs = append(columnDefaultExprs, nil)
 		} else if !regionalByRowColExists {
 			return nil, pgerror.Newf(
@@ -2621,4 +2608,21 @@ func CreateInheritedPrivilegesFromDBDesc(
 	privs.SetOwner(user)
 
 	return privs
+}
+
+func regionalByRowDefaultColDef(oid oid.Oid) *tree.ColumnTableDef {
+	// TODO(#59630): set the column visibility to be hidden.
+	c := &tree.ColumnTableDef{
+		Name: tree.RegionalByRowRegionDefaultColName,
+		Type: &tree.OIDTypeReference{OID: oid},
+	}
+	c.Nullable.Nullability = tree.NotNull
+	c.DefaultExpr.Expr = &tree.CastExpr{
+		Expr: &tree.FuncExpr{
+			Func: tree.WrapFunction("gateway_region"),
+		},
+		Type:       &tree.OIDTypeReference{OID: oid},
+		SyntaxMode: tree.CastShort,
+	}
+	return c
 }

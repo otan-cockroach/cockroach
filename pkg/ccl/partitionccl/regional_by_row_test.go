@@ -34,9 +34,9 @@ import (
 // REGIONAL BY ROW tests are defined in partitionccl as REGIONAL BY ROW
 // requires CCL to operate.
 
-// TestAlterToRegionalByRowChangeWithCancel tests an alteration to REGIONAL
-// BY ROW AS <col> which gets canceled.
-func TestAlterToRegionalByRowAsChangeWithCancel(t *testing.T) {
+// TestAlterTableLocalityToRegionalByRowWithCancel tests an alteration to REGIONAL
+// BY ROW which gets canceled.
+func TestAlterTableLocalityToRegionalByRowWithCancel(t *testing.T) {
 	defer leaktest.AfterTest(t)()
 	defer log.Scope(t).Close(t)
 
@@ -50,85 +50,117 @@ func TestAlterToRegionalByRowAsChangeWithCancel(t *testing.T) {
 		maxValue = 200
 		chunkSize = 5
 	}
-
+	// BulkInsertIntoTable adds from 0 to maxValue inclusive, so round up
+	// we round (maxValue + 1) / chunkSize to the nearest int.
+	// To round up x / y using integers, we do (x + y - 1) / y.
+	// In this case, since x=maxValue+1, we do (maxValue + chunkSize) / chunkSize.
+	var chunksPerBackfill = (maxValue + int(chunkSize)) / int(chunkSize)
 	ctx := context.Background()
-	var db *gosql.DB
-	shouldCancel := false
-	params, _ := tests.CreateTestServerParams()
-	params.Locality.Tiers = []roachpb.Tier{
-		{Key: "region", Value: "ajstorm-1"},
-	}
-	params.Knobs = base.TestingKnobs{
-		SQLSchemaChanger: &sql.SchemaChangerTestingKnobs{
-			BackfillChunkSize: chunkSize,
+
+	testCases := []struct {
+		desc                 string
+		toRegionalByRowQuery string
+		// cancelOnBackfillChunk on which chunk the cancel query should run.
+		cancelOnBackfillChunk int
+	}{
+		{
+			desc:                  "cancel after backfilling one chunk on REGIONAL BY ROW AS",
+			toRegionalByRowQuery:  `ALTER TABLE t.test SET LOCALITY REGIONAL BY ROW AS cr`,
+			cancelOnBackfillChunk: 1,
 		},
-		DistSQL: &execinfra.TestingKnobs{
-			RunBeforeBackfillChunk: func(sp roachpb.Span) error {
-				if !shouldCancel {
-					return nil
-				}
-				if _, err := db.Exec(`CANCEL JOB (
+		{
+			desc:                  "cancel during ADD COLUMN stage of REGIONAL BY ROW",
+			toRegionalByRowQuery:  `ALTER TABLE t.test SET LOCALITY REGIONAL BY ROW`,
+			cancelOnBackfillChunk: 1,
+		},
+		{
+			desc:                  "cancel during ALTER PRIMARY KEY stage of REGIONAL BY ROW",
+			toRegionalByRowQuery:  `ALTER TABLE t.test SET LOCALITY REGIONAL BY ROW`,
+			cancelOnBackfillChunk: chunksPerBackfill + 1,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			var db *gosql.DB
+			// set backfill chunk to -chunksPerBackfill, to allow the ALTER TABLE ... ADD COLUMN
+			// to backfill successfully.
+			currentBackfillChunk := -(chunksPerBackfill + 1)
+			params, _ := tests.CreateTestServerParams()
+			params.Locality.Tiers = []roachpb.Tier{
+				{Key: "region", Value: "ajstorm-1"},
+			}
+			params.Knobs = base.TestingKnobs{
+				SQLSchemaChanger: &sql.SchemaChangerTestingKnobs{
+					BackfillChunkSize: chunkSize,
+				},
+				DistSQL: &execinfra.TestingKnobs{
+					RunBeforeBackfillChunk: func(sp roachpb.Span) error {
+						currentBackfillChunk += 1
+						if currentBackfillChunk != tc.cancelOnBackfillChunk {
+							return nil
+						}
+						if _, err := db.Exec(`CANCEL JOB (
 					SELECT job_id FROM [SHOW JOBS]
 					WHERE
 						job_type = 'SCHEMA CHANGE' AND
 						status = $1 AND
 						description NOT LIKE 'ROLL BACK%'
 				)`, jobs.StatusRunning); err != nil {
-					t.Error(err)
-				}
-				return nil
-			},
-		},
-	}
-	s, sqlDB, kvDB := serverutils.StartServer(t, params)
-	db = sqlDB
-	defer s.Stopper().Stop(ctx)
+							t.Error(err)
+						}
+						return nil
+					},
+				},
+			}
+			s, sqlDB, kvDB := serverutils.StartServer(t, params)
+			db = sqlDB
+			defer s.Stopper().Stop(ctx)
 
-	// Disable strict GC TTL enforcement because we're going to shove a zero-value
-	// TTL into the system with AddImmediateGCZoneConfig.
-	defer sqltestutils.DisableGCTTLStrictEnforcement(t, sqlDB)()
+			// Disable strict GC TTL enforcement because we're going to shove a zero-value
+			// TTL into the system with AddImmediateGCZoneConfig.
+			defer sqltestutils.DisableGCTTLStrictEnforcement(t, sqlDB)()
 
-	if _, err := sqlDB.Exec(`
+			if _, err := sqlDB.Exec(`
 CREATE DATABASE t PRIMARY REGION "ajstorm-1";
 CREATE TABLE t.test (k INT NOT NULL, v INT) LOCALITY GLOBAL;
 `); err != nil {
-		t.Fatal(err)
-	}
+				t.Fatal(err)
+			}
 
-	if err := sqltestutils.BulkInsertIntoTable(sqlDB, maxValue); err != nil {
-		t.Fatal(err)
-	}
+			if err := sqltestutils.BulkInsertIntoTable(sqlDB, maxValue); err != nil {
+				t.Fatal(err)
+			}
 
-	if _, err := sqlDB.Exec(`
+			if _, err := sqlDB.Exec(`
 		ALTER TABLE t.test ADD COLUMN cr t.crdb_internal_region
 		NOT NULL
 		DEFAULT gateway_region()::t.crdb_internal_region
 	`); err != nil {
-		t.Fatal(err)
-	}
-	// This will fail, so we don't want to check the error.
-	shouldCancel = true
-	_, _ = sqlDB.Exec(`ALTER TABLE t.test SET LOCALITY REGIONAL BY ROW AS cr`)
+				t.Fatal(err)
+			}
+			// This will fail, so we don't want to check the error.
+			_, _ = sqlDB.Exec(tc.toRegionalByRowQuery)
 
-	// Ensure that the mutations corresponding to the primary key change are cleaned up and
-	// that the job did not succeed even though it was canceled.
-	testutils.SucceedsSoon(t, func() error {
-		tableDesc := catalogkv.TestingGetTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "test")
-		if len(tableDesc.GetMutations()) != 0 {
-			return errors.Errorf("expected 0 mutations after cancellation, found %d", len(tableDesc.GetMutations()))
-		}
-		if tableDesc.GetPrimaryIndex().NumColumns() != 1 || tableDesc.GetPrimaryIndex().GetColumnName(0) != "rowid" {
-			return errors.Errorf("expected primary key change to not succeed after cancellation")
-		}
-		if !tableDesc.IsLocalityGlobal() {
-			return errors.Errorf("expected locality to be global")
-		}
+			// Ensure that the mutations corresponding to the primary key change are cleaned up and
+			// that the job did not succeed even though it was canceled.
+			testutils.SucceedsSoon(t, func() error {
+				tableDesc := catalogkv.TestingGetTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "test")
+				if len(tableDesc.GetMutations()) != 0 {
+					return errors.Errorf("expected 0 mutations after cancellation, found %d", len(tableDesc.GetMutations()))
+				}
+				if tableDesc.GetPrimaryIndex().NumColumns() != 1 || tableDesc.GetPrimaryIndex().GetColumnName(0) != "rowid" {
+					return errors.Errorf("expected primary key change to not succeed after cancellation")
+				}
+				if !tableDesc.IsLocalityGlobal() {
+					return errors.Errorf("expected locality to be global")
+				}
 
-		zoneConfigRow := sqlDB.QueryRow("SHOW ZONE CONFIGURATION FROM TABLE t.test")
-		var target string
-		var rawZoneSQL string
-		require.NoError(t, zoneConfigRow.Scan(&target, &rawZoneSQL))
-		const expectedRawZoneSQL = `ALTER TABLE t.public.test CONFIGURE ZONE USING
+				zoneConfigRow := sqlDB.QueryRow("SHOW ZONE CONFIGURATION FROM TABLE t.test")
+				var target string
+				var rawZoneSQL string
+				require.NoError(t, zoneConfigRow.Scan(&target, &rawZoneSQL))
+				const expectedRawZoneSQL = `ALTER TABLE t.public.test CONFIGURE ZONE USING
 	range_min_bytes = 134217728,
 	range_max_bytes = 536870912,
 	gc.ttlseconds = 90000,
@@ -138,22 +170,24 @@ CREATE TABLE t.test (k INT NOT NULL, v INT) LOCALITY GLOBAL;
 	constraints = '{+region=ajstorm-1: 1}',
 	voter_constraints = '[+region=ajstorm-1]',
 	lease_preferences = '[[+region=ajstorm-1]]'`
-		if target != "DATABASE t" && rawZoneSQL != expectedRawZoneSQL {
-			return errors.Errorf(
-				"expected zone configuration to not have changed, got %s, sql %s",
-				target,
-				rawZoneSQL,
-			)
-		}
-		return nil
-	})
+				if target != "DATABASE t" && rawZoneSQL != expectedRawZoneSQL {
+					return errors.Errorf(
+						"expected zone configuration to not have changed, got %s, sql %s",
+						target,
+						rawZoneSQL,
+					)
+				}
+				return nil
+			})
 
-	tableDesc := catalogkv.TestingGetTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "test")
-	if _, err := sqltestutils.AddImmediateGCZoneConfig(db, tableDesc.GetID()); err != nil {
-		t.Fatal(err)
+			tableDesc := catalogkv.TestingGetTableDescriptor(kvDB, keys.SystemSQLCodec, "t", "test")
+			if _, err := sqltestutils.AddImmediateGCZoneConfig(db, tableDesc.GetID()); err != nil {
+				t.Fatal(err)
+			}
+			// Ensure that the writes from the partial new indexes are cleaned up.
+			testutils.SucceedsSoon(t, func() error {
+				return sqltestutils.CheckTableKeyCount(ctx, kvDB, 1, maxValue)
+			})
+		})
 	}
-	// Ensure that the writes from the partial new indexes are cleaned up.
-	testutils.SucceedsSoon(t, func() error {
-		return sqltestutils.CheckTableKeyCount(ctx, kvDB, 1, maxValue)
-	})
 }
