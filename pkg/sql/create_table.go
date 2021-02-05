@@ -1563,10 +1563,10 @@ func NewTableDesc(
 				)
 			}
 			oid := typedesc.TypeIDToOID(dbDesc.RegionConfig.RegionEnumID)
-			// TODO(#59630): set the column visibility to be hidden.
 			c := &tree.ColumnTableDef{
-				Name: tree.RegionalByRowRegionDefaultColName,
-				Type: &tree.OIDTypeReference{OID: oid},
+				Name:   tree.RegionalByRowRegionDefaultColName,
+				Type:   &tree.OIDTypeReference{OID: oid},
+				Hidden: true,
 			}
 			c.Nullable.Nullability = tree.NotNull
 			c.DefaultExpr.Expr = &tree.CastExpr{
