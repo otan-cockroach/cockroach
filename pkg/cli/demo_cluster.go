@@ -137,7 +137,10 @@ func (c *transientCluster) start(
 		}
 		nodeID := roachpb.NodeID(i + 1)
 		args := testServerArgsForTransientCluster(
-			c.sockForServer(nodeID), nodeID, joinAddr, c.demoDir,
+			c.sockForServer(nodeID),
+			nodeID,
+			joinAddr,
+			c.demoDir,
 			c.sqlFirstPort,
 			c.httpFirstPort,
 			c.stickyEngineRegistry,
