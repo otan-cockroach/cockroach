@@ -126,9 +126,8 @@ func (c *transientCluster) start(
 	// latency map has been constructed.
 	latencyMapWaitCh := make(chan struct{})
 
-	// errCh is used to catch all errors when initializing servers.
-	// Sending a nil on this channel indicates success.
-	errCh := make(chan error, demoCtx.nodes)
+	// serverReadyCh is used to indicate a server is ready to receive traffic.
+	serverReadyCh := make(chan struct{}, demoCtx.nodes)
 
 	for i := 0; i < demoCtx.nodes; i++ {
 		// All the nodes connect to the address of the first server created.
@@ -184,31 +183,32 @@ func (c *transientCluster) start(
 		servers = append(servers, serv)
 
 		// We force a wait for all servers until they are ready.
-		servReadyFnCh := make(chan struct{})
 		serv.Cfg.ReadyFn = func(bool) {
-			close(servReadyFnCh)
+			serverReadyCh <- struct{}{}
 		}
 
 		// If latency simulation is requested, start the servers in a background thread. We do this because
 		// the start routine needs to wait for the latency map construction after their RPC address has been computed.
 		if demoCtx.simulateLatency {
+			nodeErrCh := make(chan error)
 			go func(i int) {
 				if err := serv.Start(); err != nil {
-					errCh <- err
-				} else {
-					// Block until the ReadyFn has been called before continuing.
-					<-servReadyFnCh
-					errCh <- nil
+					nodeErrCh <- err
 				}
 			}(i)
-			<-servRPCReadyCh
+
+			select {
+			case <-servRPCReadyCh:
+				// The server has an IP address, we can continue to the next section
+				// to assign the latency mapping.
+			case err := <-nodeErrCh:
+				// If there is an error, return immediately.
+				return err
+			}
 		} else {
 			if err := serv.Start(); err != nil {
 				return err
 			}
-			// Block until the ReadyFn has been called before continuing.
-			<-servReadyFnCh
-			errCh <- nil
 		}
 	}
 
@@ -253,20 +253,15 @@ func (c *transientCluster) start(
 	{
 		timeRemaining := maxNodeInitTime
 		lastUpdateTime := timeutil.Now()
-		var err error
 		for i := 0; i < demoCtx.nodes; i++ {
 			select {
-			case e := <-errCh:
-				err = errors.CombineErrors(err, e)
+			case <-serverReadyCh:
 			case <-time.After(timeRemaining):
 				return errors.New("failed to setup transientCluster in time")
 			}
 			updateTime := timeutil.Now()
 			timeRemaining -= updateTime.Sub(lastUpdateTime)
 			lastUpdateTime = updateTime
-		}
-		if err != nil {
-			return err
 		}
 	}
 

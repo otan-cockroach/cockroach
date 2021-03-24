@@ -1281,7 +1281,7 @@ func (s *Server) PreStart(ctx context.Context) error {
 	if s.cfg.TestingKnobs.Server != nil {
 		knobs := s.cfg.TestingKnobs.Server.(*TestingKnobs)
 		if knobs.SignalAfterGettingRPCAddress != nil {
-			close(knobs.SignalAfterGettingRPCAddress)
+			knobs.SignalAfterGettingRPCAddress <- struct{}{}
 		}
 		if knobs.PauseAfterGettingRPCAddress != nil {
 			<-knobs.PauseAfterGettingRPCAddress
