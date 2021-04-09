@@ -355,10 +355,6 @@ func (t *typeSchemaChanger) exec(ctx context.Context) error {
 				return err
 			}
 
-			if err := txn.Run(ctx, b); err != nil {
-				return err
-			}
-
 			// Additional work must be performed once the promotion/demotion of enum
 			// members has been taken care of. In particular, index partitions for
 			// REGIONAL BY ROW tables must be updated to reflect the new region values
@@ -371,16 +367,21 @@ func (t *typeSchemaChanger) exec(ctx context.Context) error {
 				if fn := t.execCfg.TypeSchemaChangerTestingKnobs.RunBeforeMultiRegionUpdates; fn != nil {
 					return fn()
 				}
-				repartitionedTables, err = performMultiRegionFinalization(
+				repartitionedTables, err = writeMultiRegionFinalizationToBatch(
 					ctx,
 					immut,
 					txn,
+					b,
 					t.execCfg,
 					descsCol,
 				)
 				if err != nil {
 					return err
 				}
+			}
+
+			if err := txn.Run(ctx, b); err != nil {
+				return err
 			}
 
 			return nil
@@ -428,13 +429,15 @@ func (t *typeSchemaChanger) exec(ctx context.Context) error {
 	return nil
 }
 
-// performMultiRegionFinalization updates the zone configurations on the
+// writeMultiRegionFinalizationToBatch updates the zone configurations on the
 // database and re-partitions all REGIONAL BY ROW tables after REGION ADD/DROP
 // has completed. A list of re-partitioned tables, if any, is returned.
-func performMultiRegionFinalization(
+// The operations are not committed; they are instead added to the batch.
+func writeMultiRegionFinalizationToBatch(
 	ctx context.Context,
 	typeDesc catalog.TypeDescriptor,
 	txn *kv.Txn,
+	b *kv.Batch,
 	execCfg *ExecutorConfig,
 	descsCol *descs.Collection,
 ) ([]descpb.ID, error) {
@@ -454,17 +457,18 @@ func performMultiRegionFinalization(
 		return nil, err
 	}
 
-	return repartitionRegionalByRowTables(ctx, typeDesc, txn, execCfg, descsCol, regionConfig)
+	return writeRegionalByRowRepartitionToBatch(ctx, typeDesc, txn, b, execCfg, descsCol, regionConfig)
 }
 
-// repartitionRegionalByRowTables takes a multi-region enum and re-partitions
+// writeRegionalByRowRepartitionToBatch takes a multi-region enum and re-partitions
 // all REGIONAL BY ROW tables in the enclosing database such that there is a
 // partition and corresponding zone configuration for all PUBLIC enum members
-// (regions).
-func repartitionRegionalByRowTables(
+// (regions). All operations are added to the given batch object.
+func writeRegionalByRowRepartitionToBatch(
 	ctx context.Context,
 	typeDesc catalog.TypeDescriptor,
 	txn *kv.Txn,
+	b *kv.Batch,
 	execCfg *ExecutorConfig,
 	descsCol *descs.Collection,
 	regionConfig multiregion.RegionConfig,
@@ -495,7 +499,6 @@ func repartitionRegionalByRowTables(
 		return nil, err
 	}
 
-	b := txn.NewBatch()
 	err = localPlanner.forEachMutableTableInDatabase(ctx, dbDesc,
 		func(ctx context.Context, tableDesc *tabledesc.Mutable) error {
 			if !tableDesc.IsLocalityRegionalByRow() || tableDesc.Dropped() {
@@ -590,10 +593,6 @@ func repartitionRegionalByRowTables(
 			return nil
 		})
 	if err != nil {
-		return nil, err
-	}
-
-	if err := txn.Run(ctx, b); err != nil {
 		return nil, err
 	}
 
