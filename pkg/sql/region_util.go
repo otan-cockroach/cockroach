@@ -1028,7 +1028,7 @@ func synthesizeRegionConfigImpl(
 	}
 	var regionNames descpb.RegionNames
 	if forZoneConfigValidate {
-		regionNames, err = regionEnum.RegionNamesForZoneConfigValidation()
+		regionNames, err = regionEnum.RegionNamesIncludingDropping()
 	} else {
 		regionNames, err = regionEnum.RegionNames()
 	}
