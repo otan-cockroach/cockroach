@@ -160,11 +160,15 @@ func TestAlterTableLocalityRegionalByRowCorrectZoneConfigBeforeBackfill(t *testi
 }
 
 func TestRegionChangeDuringAlterTableRegionalByRow(t *testing.T) {
-	defer leaktest.AfterTest(t)()
-
 	interruptStartCh := make(chan struct{})
 	interruptEndCh := make(chan struct{})
-	performInterrupt := false
+
+	// The mutex protects against concurrent index backfill jobs from
+	// accessing the same RunBeforeBackfillChunk hook.
+	var mu struct {
+		m                syncutil.Mutex
+		performInterrupt bool
+	}
 
 	regionalByRowChanges := []struct {
 		setup    string
@@ -175,8 +179,10 @@ func TestRegionChangeDuringAlterTableRegionalByRow(t *testing.T) {
 			alterCmd: `ALTER TABLE t.test SET LOCALITY REGIONAL BY ROW`,
 		},
 		{
-			setup:    `CREATE TABLE t.test (k INT NOT NULL, v INT) LOCALITY REGIONAL BY ROW`,
-			alterCmd: `ALTER TABLE t.test SET LOCALITY GLOBAL`,
+			setup: `CREATE TABLE t.test (k INT NOT NULL, v INT) LOCALITY REGIONAL BY ROW`,
+			alterCmd: `
+			SET override_multi_region_zone_config = true; -- TODO(#63462): this is needed due to validation errors during concurrent DROP REGION and REGIONAL BY ROW transitions. Remove when resolved.
+			ALTER TABLE t.test SET LOCALITY GLOBAL`,
 		},
 	}
 
@@ -218,8 +224,11 @@ USE t;
 					base.TestingKnobs{
 						DistSQL: &execinfra.TestingKnobs{
 							RunBeforeBackfillChunk: func(sp roachpb.Span) error {
-								if performInterrupt {
-									performInterrupt = false
+								mu.m.Lock()
+								defer mu.m.Unlock()
+
+								if mu.performInterrupt {
+									mu.performInterrupt = false
 									interruptStartCh <- struct{}{}
 									<-interruptEndCh
 								}
@@ -231,7 +240,7 @@ USE t;
 				)
 				defer cleanup()
 				setupDB(sqlDB, rbrChange.setup)
-				performInterrupt = true
+				mu.performInterrupt = true
 
 				// Perform the alter table command asynchronously; this will be interrupted by the region change.
 				rbrErrCh := make(chan error)
@@ -245,12 +254,68 @@ USE t;
 
 				// Now run the alter command on the database.
 				_, err := sqlDB.Exec(regionChange)
+
+				// Now finish up and ensure no errors (we must do this before the error check to ensure the interrupt completes).
+				interruptEndCh <- struct{}{}
+				require.NoError(t, <-rbrErrCh)
+
+				// Ensure the region command errors.
 				require.Error(t, err)
 				require.EqualError(t, err, "pq: cannot perform database region changes whilst a REGIONAL BY ROW transition is underway")
 
-				// Now finish up and ensure no errors.
+				// Validate the zone configuration.
+				_, err = sqlDB.Exec(`SELECT crdb_internal.validate_multi_region_zone_configs()`)
+				require.NoError(t, err)
+			})
+		}
+	}
+
+	// Tests REGIONAL BY ROW during an ADD/DROP REGION transition.
+	for _, regionChange := range regionChanges {
+		for _, rbrChange := range regionalByRowChanges {
+			t.Run(fmt.Sprintf("%s with racing from %s to %s", regionChange, rbrChange.setup, rbrChange.alterCmd), func(t *testing.T) {
+				_, sqlDB, cleanup := multiregionccltestutils.TestingCreateMultiRegionCluster(
+					t,
+					3, /* numServers */
+					base.TestingKnobs{
+						SQLTypeSchemaChanger: &sql.TypeSchemaChangerTestingKnobs{
+							RunBeforeEnumMemberPromotion: func() {
+								mu.m.Lock()
+								defer mu.m.Unlock()
+
+								if mu.performInterrupt {
+									mu.performInterrupt = false
+									interruptStartCh <- struct{}{}
+									<-interruptEndCh
+								}
+							},
+						},
+					},
+					nil, /* baseDir */
+				)
+				defer cleanup()
+				setupDB(sqlDB, rbrChange.setup)
+				mu.performInterrupt = true
+
+				regionChangeErr := make(chan error)
+				go func() {
+					_, err := sqlDB.Exec(regionChange)
+					regionChangeErr <- err
+				}()
+
+				// Wait for the backfill to start.
+				<-interruptStartCh
+
+				// Perform the REGIONAL BY ROW transformation.
+				_, err := sqlDB.Exec(rbrChange.alterCmd)
+
+				// Now finish up and ensure no errors (we must do this before the error check to ensure the interrupt completes).
 				interruptEndCh <- struct{}{}
-				require.NoError(t, <-rbrErrCh)
+				require.NoError(t, <-regionChangeErr)
+
+				// Ensure the alter cmd errors.
+				require.Error(t, err)
+				require.EqualError(t, err, "pq: cannot transition to or from REGIONAL BY ROW whilst a region is being added or dropped")
 
 				// Validate the zone configuration.
 				_, err = sqlDB.Exec(`SELECT crdb_internal.validate_multi_region_zone_configs()`)
