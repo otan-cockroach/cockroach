@@ -179,10 +179,8 @@ func TestRegionChangeDuringAlterTableRegionalByRow(t *testing.T) {
 			alterCmd: `ALTER TABLE t.test SET LOCALITY REGIONAL BY ROW`,
 		},
 		{
-			setup: `CREATE TABLE t.test (k INT NOT NULL, v INT) LOCALITY REGIONAL BY ROW`,
-			alterCmd: `
-			SET override_multi_region_zone_config = true; -- TODO(#63462): this is needed due to validation errors during concurrent DROP REGION and REGIONAL BY ROW transitions. Remove when resolved.
-			ALTER TABLE t.test SET LOCALITY GLOBAL`,
+			setup:    `CREATE TABLE t.test (k INT NOT NULL, v INT) LOCALITY REGIONAL BY ROW`,
+			alterCmd: `ALTER TABLE t.test SET LOCALITY GLOBAL`,
 		},
 	}
 

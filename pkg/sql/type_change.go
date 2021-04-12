@@ -439,7 +439,13 @@ func performMultiRegionFinalization(
 	execCfg *ExecutorConfig,
 	descsCol *descs.Collection,
 ) ([]descpb.ID, error) {
-	regionConfig, err := SynthesizeRegionConfig(ctx, txn, typeDesc.GetParentID(), descsCol)
+	regionConfig, err := SynthesizeRegionConfig(
+		ctx,
+		txn,
+		typeDesc.GetParentID(),
+		descsCol,
+		SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -568,7 +574,13 @@ func repartitionRegionalByRowTables(
 			}
 
 			// Update the zone configurations now that the partition's been added.
-			regionConfig, err := SynthesizeRegionConfig(ctx, txn, typeDesc.GetParentID(), descsCol)
+			regionConfig, err := SynthesizeRegionConfig(
+				ctx,
+				txn,
+				typeDesc.GetParentID(),
+				descsCol,
+				SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+			)
 			if err != nil {
 				return err
 			}

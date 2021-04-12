@@ -719,7 +719,13 @@ func (p *planner) updateZoneConfigsForAllTables(ctx context.Context, desc *dbdes
 		ctx,
 		desc,
 		func(ctx context.Context, tbDesc *tabledesc.Mutable) error {
-			regionConfig, err := SynthesizeRegionConfig(ctx, p.txn, desc.ID, p.Descriptors())
+			regionConfig, err := SynthesizeRegionConfig(
+				ctx,
+				p.txn,
+				desc.ID,
+				p.Descriptors(),
+				SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+			)
 			if err != nil {
 				return err
 			}
@@ -814,7 +820,13 @@ func (p *planner) ValidateAllMultiRegionZoneConfigsInCurrentDatabase(ctx context
 	if !dbDesc.IsMultiRegion() {
 		return nil
 	}
-	regionConfig, err := SynthesizeRegionConfigForZoneConfigValidation(ctx, p.txn, dbDesc.GetID(), p.Descriptors())
+	regionConfig, err := SynthesizeRegionConfig(
+		ctx,
+		p.txn,
+		dbDesc.GetID(),
+		p.Descriptors(),
+		SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+	)
 	if err != nil {
 		return err
 	}
@@ -929,79 +941,50 @@ func (p *planner) CurrentDatabaseRegionConfig(
 	), nil
 }
 
-// SynthesizeRegionConfigOffline is the public function for the synthesizing
-// region configs in cases where the searched for descriptor may be in
-// the offline state. See synthesizeRegionConfig for more details on what it
-// does under the covers.
-func SynthesizeRegionConfigOffline(
-	ctx context.Context, txn *kv.Txn, dbID descpb.ID, descsCol *descs.Collection,
-) (multiregion.RegionConfig, error) {
-	return synthesizeRegionConfigImpl(
-		ctx,
-		txn,
-		dbID,
-		descsCol,
-		true,  /* includeOffline */
-		false, /* forZoneConfigValidate */
-	)
+type synthesizeRegionConfigOptions struct {
+	includeOffline             bool
+	includeRegionsBeingDropped bool
 }
 
-// SynthesizeRegionConfig is the public function for the synthesizing region
-// configs in the common case (i.e. not the offline case). See
-// synthesizeRegionConfig for more details on what it does under the covers.
-func SynthesizeRegionConfig(
-	ctx context.Context, txn *kv.Txn, dbID descpb.ID, descsCol *descs.Collection,
-) (multiregion.RegionConfig, error) {
-	return synthesizeRegionConfigImpl(
-		ctx,
-		txn,
-		dbID,
-		descsCol,
-		false, /* includeOffline */
-		false, /* forZoneConfigValidate */
-	)
+// SynthesizeRegionConfigOption is an option to pass into SynthesizeRegionConfig.
+type SynthesizeRegionConfigOption func(o *synthesizeRegionConfigOptions)
+
+// SynthesizeRegionConfigOptionIncludeOffline includes offline descriptors for use
+// in RESTORE.
+var SynthesizeRegionConfigOptionIncludeOffline SynthesizeRegionConfigOption = func(o *synthesizeRegionConfigOptions) {
+	o.includeOffline = true
 }
 
-// SynthesizeRegionConfigForZoneConfigValidation returns a RegionConfig
-// representing the user configured state of a multi-region database by
-// coalescing state from both the database descriptor and multi-region type
-// descriptor. It avoids the cache and is intended for use by DDL statements.
-// Since it is intended to be called for validation of the RegionConfig against
-// the current database zone configuration, it omits regions that are in the
-// adding state, but includes those that are being dropped.
-func SynthesizeRegionConfigForZoneConfigValidation(
-	ctx context.Context, txn *kv.Txn, dbID descpb.ID, descsCol *descs.Collection,
-) (multiregion.RegionConfig, error) {
-	return synthesizeRegionConfigImpl(
-		ctx,
-		txn,
-		dbID,
-		descsCol,
-		false, /* includeOffline */
-		true,  /* forZoneConfigValidate */
-	)
+// SynthesizeRegionConfigOptionIncludeRegionsBeingDropped includes regions that
+// are being dropped for the purposes of populating partitions.
+var SynthesizeRegionConfigOptionIncludeRegionsBeingDropped SynthesizeRegionConfigOption = func(o *synthesizeRegionConfigOptions) {
+	o.includeRegionsBeingDropped = true
 }
 
-// SynthesizeRegionConfigImpl returns a RegionConfig representing the user
+// SynthesizeRegionConfig returns a RegionConfig representing the user
 // configured state of a multi-region database by coalescing state from both
 // the database descriptor and multi-region type descriptor. It avoids the cache
 // and is intended for use by DDL statements. It can be called either for a
 // traditional construction, which omits all regions in the non-PUBLIC state, or
 // for zone configuration validation, which only omits region that are being
 // added.
-func synthesizeRegionConfigImpl(
+func SynthesizeRegionConfig(
 	ctx context.Context,
 	txn *kv.Txn,
 	dbID descpb.ID,
 	descsCol *descs.Collection,
-	includeOffline bool,
-	forZoneConfigValidate bool,
+	opts ...SynthesizeRegionConfigOption,
 ) (multiregion.RegionConfig, error) {
+	var o synthesizeRegionConfigOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	regionConfig := multiregion.RegionConfig{}
 	_, dbDesc, err := descsCol.GetImmutableDatabaseByID(ctx, txn, dbID, tree.DatabaseLookupFlags{
 		AvoidCached:    true,
 		Required:       true,
-		IncludeOffline: includeOffline,
+		IncludeOffline: o.includeOffline,
 	})
 	if err != nil {
 		return regionConfig, err
@@ -1019,7 +1002,7 @@ func synthesizeRegionConfigImpl(
 		tree.ObjectLookupFlags{
 			CommonLookupFlags: tree.CommonLookupFlags{
 				AvoidCached:    true,
-				IncludeOffline: includeOffline,
+				IncludeOffline: o.includeOffline,
 			},
 		},
 	)
@@ -1027,7 +1010,7 @@ func synthesizeRegionConfigImpl(
 		return multiregion.RegionConfig{}, err
 	}
 	var regionNames descpb.RegionNames
-	if forZoneConfigValidate {
+	if o.includeRegionsBeingDropped {
 		regionNames, err = regionEnum.RegionNamesIncludingDropping()
 	} else {
 		regionNames, err = regionEnum.RegionNames()
@@ -1356,7 +1339,13 @@ func (p *planner) validateZoneConfigForMultiRegionDatabaseWasNotModifiedByUser(
 	if err != nil {
 		return err
 	}
-	regionConfig, err := SynthesizeRegionConfigForZoneConfigValidation(ctx, p.txn, dbDesc.GetID(), p.Descriptors())
+	regionConfig, err := SynthesizeRegionConfig(
+		ctx,
+		p.txn,
+		dbDesc.GetID(),
+		p.Descriptors(),
+		SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+	)
 	if err != nil {
 		return err
 	}
@@ -1423,7 +1412,13 @@ func (p *planner) validateZoneConfigForMultiRegionTableWasNotModifiedByUser(
 	if err != nil {
 		return err
 	}
-	regionConfig, err := SynthesizeRegionConfig(ctx, p.txn, dbDesc.GetID(), p.Descriptors())
+	regionConfig, err := SynthesizeRegionConfig(
+		ctx,
+		p.txn,
+		dbDesc.GetID(),
+		p.Descriptors(),
+		SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+	)
 	if err != nil {
 		return err
 	}

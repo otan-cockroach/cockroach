@@ -2500,7 +2500,13 @@ func (sc *SchemaChanger) applyZoneConfigChangeForMutation(
 				)
 			}
 
-			regionConfig, err := SynthesizeRegionConfig(ctx, txn, dbDesc.GetID(), descsCol)
+			regionConfig, err := SynthesizeRegionConfig(
+				ctx,
+				txn,
+				dbDesc.GetID(),
+				descsCol,
+				SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+			)
 			if err != nil {
 				return err
 			}

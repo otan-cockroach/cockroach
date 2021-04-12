@@ -307,7 +307,13 @@ func (n *createViewNode) startExec(params runParams) error {
 	}
 
 	if applyGlobalMultiRegionZoneConfig {
-		regionConfig, err := SynthesizeRegionConfig(params.ctx, params.p.txn, n.dbDesc.GetID(), params.p.Descriptors())
+		regionConfig, err := SynthesizeRegionConfig(
+			params.ctx,
+			params.p.txn,
+			n.dbDesc.GetID(),
+			params.p.Descriptors(),
+			SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+		)
 		if err != nil {
 			return err
 		}

@@ -305,7 +305,11 @@ func (p *planner) AlterPrimaryKey(
 				colName = tree.Name(*as)
 			}
 			regionConfig, err := SynthesizeRegionConfig(
-				ctx, p.txn, tableDesc.GetParentID(), p.Descriptors(),
+				ctx,
+				p.txn,
+				tableDesc.GetParentID(),
+				p.Descriptors(),
+				SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
 			)
 			if err != nil {
 				return err

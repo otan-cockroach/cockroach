@@ -401,7 +401,13 @@ func (n *createTableNode) startExec(params runParams) error {
 			return errors.Wrap(err, "error resolving database for multi-region")
 		}
 
-		regionConfig, err := SynthesizeRegionConfig(params.ctx, params.p.txn, dbDesc.GetID(), params.p.Descriptors())
+		regionConfig, err := SynthesizeRegionConfig(
+			params.ctx,
+			params.p.txn,
+			dbDesc.GetID(),
+			params.p.Descriptors(),
+			SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+		)
 		if err != nil {
 			return err
 		}
@@ -2421,7 +2427,13 @@ func newTableDesc(
 
 	var regionConfig *multiregion.RegionConfig
 	if dbDesc.IsMultiRegion() {
-		conf, err := SynthesizeRegionConfig(params.ctx, params.p.txn, parentID, params.p.Descriptors())
+		conf, err := SynthesizeRegionConfig(
+			params.ctx,
+			params.p.txn,
+			parentID,
+			params.p.Descriptors(),
+			SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+		)
 		if err != nil {
 			return nil, err
 		}

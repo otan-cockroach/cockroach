@@ -578,7 +578,13 @@ func (n *alterTableSetLocalityNode) writeNewTableLocalityAndZoneConfig(params ru
 		return err
 	}
 
-	regionConfig, err := SynthesizeRegionConfig(params.ctx, params.p.txn, n.dbDesc.GetID(), params.p.Descriptors())
+	regionConfig, err := SynthesizeRegionConfig(
+		params.ctx,
+		params.p.txn,
+		n.dbDesc.GetID(),
+		params.p.Descriptors(),
+		SynthesizeRegionConfigOptionIncludeRegionsBeingDropped,
+	)
 	if err != nil {
 		return err
 	}
