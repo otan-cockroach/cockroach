@@ -16,6 +16,9 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/geo"
 	"github.com/cockroachdb/cockroach/pkg/geo/geopb"
 	"github.com/cockroachdb/cockroach/pkg/geo/geos"
+	"github.com/cockroachdb/errors"
+	"github.com/twpayne/go-geom"
+	"github.com/twpayne/go-geom/encoding/ewkb"
 )
 
 // Boundary returns the boundary of a given Geometry.
@@ -98,15 +101,93 @@ func Difference(a, b geo.Geometry) (geo.Geometry, error) {
 }
 
 // Simplify returns a simplified Geometry.
-func Simplify(g geo.Geometry, tolerance float64) (geo.Geometry, error) {
-	if math.IsNaN(tolerance) || g.ShapeType2D() == geopb.ShapeType_Point || g.ShapeType2D() == geopb.ShapeType_MultiPoint {
+func Simplify(g geo.Geometry, tolerance float64, preserveCollapsed bool) (geo.Geometry, error) {
+	if math.IsNaN(tolerance) || g.Empty() || g.ShapeType2D() == geopb.ShapeType_Point || g.ShapeType2D() == geopb.ShapeType_MultiPoint {
 		return g, nil
 	}
 	simplifiedEWKB, err := geos.Simplify(g.EWKB(), tolerance)
 	if err != nil {
 		return geo.Geometry{}, err
 	}
-	return geo.ParseGeometryFromEWKB(simplifiedEWKB)
+	t, err := ewkb.Unmarshal(simplifiedEWKB)
+	if err != nil {
+		return geo.Geometry{}, err
+	}
+	if t, err = processCollapsedAfterSimplify(t, preserveCollapsed); err != nil {
+		return geo.Geometry{}, err
+	}
+	return geo.MakeGeometryFromGeomT(t)
+}
+
+func processCollapsedAfterSimplify(
+	original geo.Geometry, t geom.T, preserveCollapsed bool,
+) (geom.T, error) {
+	switch t := t.(type) {
+	case *geom.Point, *geom.MultiPoint:
+		return t, nil
+	case *geom.LineString:
+		if simplifyShouldCollapseLineString(t, preserveCollapsed) {
+			return geom.NewLineString(t.Layout()).SetSRID(t.SRID()), nil
+		}
+		return t, nil
+	case *geom.MultiLineString:
+		needsChange := false
+		// First scan to avoid the extra allocations if unnecessary.
+		for i := 0; i < t.NumLineStrings(); i++ {
+			if simplifyShouldCollapseLineString(t.LineString(i)) {
+				needsChange = true
+				break
+			}
+		}
+		if !needsChange {
+			return t, nil
+		}
+		ret := geom.NewMultiLineString(t.Layout()).SetSRID(t.SRID())
+		for i := 0; i < t.NumLineStrings(); i++ {
+			toAppend, err := processCollapsedAfterSimplify(t, preserveCollapsed)
+			if err != nil {
+				return nil, err
+			}
+			if err := ret.Push(toAppend); err != nil {
+				return nil, err
+			}
+			return ret, nil
+		}
+	case *geom.Polygon:
+		if simplifyShouldUncollapsePolygon(t, preserveCollapsed) {
+
+		}
+		return t, nil
+	case *geom.GeometryCollection:
+		ret := geom.NewGeometryCollection().SetSRID(t.SRID())
+		for _, gcT := range t.Geoms() {
+			pushT, err := processCollapsedAfterSimplify(gcT, preserveCollapsed)
+			if err != nil {
+				return nil, err
+			}
+			if err := ret.Push(pushT); err != nil {
+				return nil, err
+			}
+		}
+		return ret, nil
+	default:
+		return nil, errors.Newf("unknown geom.T after simplify: %T", t)
+	}
+}
+
+// simplifyShouldCollapseLineString determines whether a LineString should be
+// collapsed.
+// GEOS will make two equal points if the LineString is fully collapsed.
+// We should collapse the LineString if it is requested.
+func simplifyShouldCollapseLineString(t *geom.LineString, preserveCollapsed bool) bool {
+	return t.NumPoints() == 2 && !preserveCollapsed && t.Coord(0).Equal(geom.XY, t.Coord(1))
+}
+
+// simplifyShouldUncollapsePolygon determines whether a Polygon should be
+// uncollapsed.
+// GEOS will return POLYGON EMPTY if a point is collapsed.
+func simplifyShouldUncollapsePolygon(t *geom.Polygon, preserveCollapsed bool) bool {
+	return t.IsEmpty() && preserveCollapsed
 }
 
 // SimplifyPreserveTopology returns a simplified Geometry with topology preserved.
