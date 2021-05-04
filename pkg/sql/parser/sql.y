@@ -1011,7 +1011,7 @@ func (u *sqlSymUnion) objectNamePrefixList() tree.ObjectNamePrefixList {
 %type <*tree.TableIndexName> table_index_name
 %type <tree.TableIndexNames> table_index_name_list
 
-%type <tree.Operator> math_op
+%type <tree.Operator> all_op op math_op operator_op qual_op
 
 %type <tree.IsolationLevel> iso_level
 %type <tree.UserPriority> user_priority
@@ -1277,9 +1277,10 @@ func (u *sqlSymUnion) objectNamePrefixList() tree.ObjectNamePrefixList {
 %left      '|'
 %left      '#'
 %left      '&'
-%left      LSHIFT RSHIFT INET_CONTAINS_OR_EQUALS INET_CONTAINED_BY_OR_EQUALS AND_AND SQRT CBRT
+%left      FLOORDIV LSHIFT RSHIFT INET_CONTAINS_OR_EQUALS INET_CONTAINED_BY_OR_EQUALS AND_AND SQRT CBRT
+%left      OPERATOR
 %left      '+' '-'
-%left      '*' '/' FLOORDIV '%'
+%left      '*' '/' '%'
 %left      '^'
 // Unary Operators
 %left      AT                // sets precedence for AT TIME ZONE
@@ -10279,10 +10280,6 @@ a_expr:
   {
     $$.val = &tree.BinaryExpr{Operator: tree.Div, Left: $1.expr(), Right: $3.expr()}
   }
-| a_expr FLOORDIV a_expr
-  {
-    $$.val = &tree.BinaryExpr{Operator: tree.FloorDiv, Left: $1.expr(), Right: $3.expr()}
-  }
 | a_expr '%' a_expr
   {
     $$.val = &tree.BinaryExpr{Operator: tree.Mod, Left: $1.expr(), Right: $3.expr()}
@@ -10290,18 +10287,6 @@ a_expr:
 | a_expr '^' a_expr
   {
     $$.val = &tree.BinaryExpr{Operator: tree.Pow, Left: $1.expr(), Right: $3.expr()}
-  }
-| a_expr '#' a_expr
-  {
-    $$.val = &tree.BinaryExpr{Operator: tree.Bitxor, Left: $1.expr(), Right: $3.expr()}
-  }
-| a_expr '&' a_expr
-  {
-    $$.val = &tree.BinaryExpr{Operator: tree.Bitand, Left: $1.expr(), Right: $3.expr()}
-  }
-| a_expr '|' a_expr
-  {
-    $$.val = &tree.BinaryExpr{Operator: tree.Bitor, Left: $1.expr(), Right: $3.expr()}
   }
 | a_expr '<' a_expr
   {
@@ -10577,6 +10562,10 @@ a_expr:
       Right: $4.expr(),
     }
   }
+| a_expr qual_op a_expr
+  {
+    $$.val = &tree.BinaryExpr{Operator: $2.operator(), Left: $1.expr(), Right: $3.expr()}
+  }
 | DEFAULT
   {
     $$.val = tree.DefaultVal{}
@@ -10630,10 +10619,6 @@ b_expr:
   {
     $$.val = &tree.BinaryExpr{Operator: tree.Div, Left: $1.expr(), Right: $3.expr()}
   }
-| b_expr FLOORDIV b_expr
-  {
-    $$.val = &tree.BinaryExpr{Operator: tree.FloorDiv, Left: $1.expr(), Right: $3.expr()}
-  }
 | b_expr '%' b_expr
   {
     $$.val = &tree.BinaryExpr{Operator: tree.Mod, Left: $1.expr(), Right: $3.expr()}
@@ -10641,18 +10626,6 @@ b_expr:
 | b_expr '^' b_expr
   {
     $$.val = &tree.BinaryExpr{Operator: tree.Pow, Left: $1.expr(), Right: $3.expr()}
-  }
-| b_expr '#' b_expr
-  {
-    $$.val = &tree.BinaryExpr{Operator: tree.Bitxor, Left: $1.expr(), Right: $3.expr()}
-  }
-| b_expr '&' b_expr
-  {
-    $$.val = &tree.BinaryExpr{Operator: tree.Bitand, Left: $1.expr(), Right: $3.expr()}
-  }
-| b_expr '|' b_expr
-  {
-    $$.val = &tree.BinaryExpr{Operator: tree.Bitor, Left: $1.expr(), Right: $3.expr()}
   }
 | b_expr '<' b_expr
   {
@@ -10705,6 +10678,10 @@ b_expr:
 | b_expr IS NOT OF '(' type_list ')' %prec IS
   {
     $$.val = &tree.IsOfTypeExpr{Not: true, Expr: $1.expr(), Types: $6.typeReferences()}
+  }
+| b_expr qual_op b_expr
+  {
+    $$.val = &tree.BinaryExpr{Operator: $2.operator(), Left: $1.expr(), Right: $3.expr()}
   }
 
 // Productions that can be used in both a_expr and b_expr.
@@ -11456,26 +11433,53 @@ sub_type:
     $$.val = tree.All
   }
 
+all_op:
+  math_op
+| op
+
+operator_op:
+  all_op
+| name '.' all_op
+  {
+    // Only support operators on pg_catalog.
+    if $1 != "pg_catalog" {
+      return unimplemented(sqllex, "user defined operator")
+    }
+    $$ = $3
+  }
+
+// math_op matches MathOp on PostgreSQL's gram.y.
 math_op:
   '+' { $$.val = tree.Plus  }
 | '-' { $$.val = tree.Minus }
 | '*' { $$.val = tree.Mult  }
 | '/' { $$.val = tree.Div   }
-| FLOORDIV { $$.val = tree.FloorDiv }
-| '%' { $$.val = tree.Mod    }
-| '&' { $$.val = tree.Bitand }
-| '|' { $$.val = tree.Bitor  }
-| '^' { $$.val = tree.Pow }
-| '#' { $$.val = tree.Bitxor }
-| '<' { $$.val = tree.LT }
-| '>' { $$.val = tree.GT }
-| '=' { $$.val = tree.EQ }
+| '%' { $$.val = tree.Mod   }
+| '^' { $$.val = tree.Pow   }
+| '<' { $$.val = tree.LT    }
+| '>' { $$.val = tree.GT    }
+| '=' { $$.val = tree.EQ    }
 | LESS_EQUALS    { $$.val = tree.LE }
 | GREATER_EQUALS { $$.val = tree.GE }
 | NOT_EQUALS     { $$.val = tree.NE }
 
+qual_op:
+  OPERATOR '(' operator_op ')'
+  {
+    $$ = $3
+  }
+| op
+
+// op matches Op on PostgreSQL's gram.y
+op:
+  '#' { $$.val = tree.Bitxor }
+| '&' { $$.val = tree.Bitand }
+| '|' { $$.val = tree.Bitor  }
+| FLOORDIV { $$.val = tree.FloorDiv }
+
 subquery_op:
-  math_op
+  all_op
+| OPERATOR '(' operator_op ')' { $$ = $3 }
 | LIKE         { $$.val = tree.Like     }
 | NOT_LA LIKE  { $$.val = tree.NotLike  }
 | ILIKE        { $$.val = tree.ILike    }
