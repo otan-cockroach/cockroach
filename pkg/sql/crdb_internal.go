@@ -3764,7 +3764,7 @@ CREATE TABLE crdb_internal.partitions (
 //
 // TODO(tbg): s/kv_/cluster_/
 var crdbInternalKVNodeStatusTable = virtualSchemaTable{
-	comment: "node details across the entire cluster (cluster RPC; expensive!)",
+	comment: "node details across the entire cluster",
 	schema: `
 CREATE TABLE crdb_internal.kv_node_status (
   node_id        INT NOT NULL,
@@ -3794,17 +3794,22 @@ CREATE TABLE crdb_internal.kv_node_status (
 		if err := p.RequireAdminRole(ctx, "read crdb_internal.kv_node_status"); err != nil {
 			return err
 		}
-		ss, err := p.extendedEvalCtx.NodesStatusServer.OptionalNodesStatusServer(
-			errorutil.FeatureNotAvailableToNonSystemTenantsIssue)
-		if err != nil {
-			return err
-		}
-		response, err := ss.Nodes(ctx, &serverpb.NodesRequest{})
-		if err != nil {
+
+		startKey := keys.StatusNodePrefix
+		endKey := startKey.PrefixEnd()
+
+		b := &kv.Batch{}
+		b.Scan(startKey, endKey)
+		if err := p.ExecCfg().DB.Run(ctx, b); err != nil {
 			return err
 		}
 
-		for _, n := range response.Nodes {
+		for _, row := range b.Results[0].Rows {
+			var n statuspb.NodeStatus
+			if err := row.ValueProto(&n); err != nil {
+				return err
+			}
+
 			attrs := json.NewArrayBuilder(len(n.Desc.Attrs.Attrs))
 			for _, a := range n.Desc.Attrs.Attrs {
 				attrs.Add(json.FromString(a))
