@@ -20,11 +20,15 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/config"
 	"github.com/cockroachdb/cockroach/pkg/config/zonepb"
 	"github.com/cockroachdb/cockroach/pkg/gossip"
+	"github.com/cockroachdb/cockroach/pkg/keys"
+	"github.com/cockroachdb/cockroach/pkg/kv"
 	"github.com/cockroachdb/cockroach/pkg/kv/kvclient/kvcoord"
 	"github.com/cockroachdb/cockroach/pkg/kv/kvclient/kvtenant"
 	"github.com/cockroachdb/cockroach/pkg/kv/kvclient/rangecache"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/rpc"
+	"github.com/cockroachdb/cockroach/pkg/server/serverpb"
+	"github.com/cockroachdb/cockroach/pkg/server/status/statuspb"
 	"github.com/cockroachdb/cockroach/pkg/util/contextutil"
 	"github.com/cockroachdb/cockroach/pkg/util/grpcutil"
 	"github.com/cockroachdb/cockroach/pkg/util/log"
@@ -89,6 +93,11 @@ var _ rangecache.RangeDescriptorDB = (*Connector)(nil)
 // the need for SQL-only tenant processes to join the cluster-wide gossip
 // network.
 var _ config.SystemConfigProvider = (*Connector)(nil)
+
+// Connector is capable of find the status of every node in the cluster.
+// This is necessary for region validation for zone configurations and
+// multi-region primitives.
+var _ serverpb.NodesStatusServer = (*Connector)(nil)
 
 // NewConnector creates a new Connector.
 // NOTE: Calling Start will set cfg.RPCContext.ClusterID.
@@ -344,6 +353,56 @@ func (c *Connector) RangeLookup(
 		return resp.Descriptors, resp.PrefetchedDescriptors, nil
 	}
 	return nil, nil, ctx.Err()
+}
+
+func (c *Connector) Nodes(
+	ctx context.Context, _ *serverpb.NodesRequest,
+) (*serverpb.NodesResponse, error) {
+	ctx = c.AnnotateCtx(ctx)
+	for ctx.Err() == nil {
+		client, err := c.getClient(ctx)
+		if err != nil {
+			continue
+		}
+
+		var u roachpb.RequestUnion
+		u.MustSetInner(roachpb.NewScan(
+			keys.StatusNodePrefix,
+			keys.StatusNodePrefix.PrefixEnd(),
+			false, /* forUpdate */
+		))
+		batchResp, err := client.Batch(
+			ctx,
+			&roachpb.BatchRequest{
+				Requests: []roachpb.RequestUnion{u},
+			},
+		)
+		if err != nil {
+			log.Warningf(ctx, "error issuing Batch RPC: %v", err)
+			if grpcutil.IsAuthError(err) {
+				// Authentication or authorization error. Propagate.
+				return nil, err
+			}
+			// Soft RPC error. Drop client and retry.
+			c.tryForgetClient(ctx, client)
+			continue
+		}
+
+		scanResp := batchResp.Responses[0].GetInner().(*roachpb.ScanResponse)
+		ret := &serverpb.NodesResponse{
+			Nodes: make([]statuspb.NodeStatus, len(scanResp.Rows)),
+		}
+		for i, row := range scanResp.Rows {
+			kvRow := kv.KeyValue{
+				Value: &row.Value,
+			}
+			if err := kvRow.ValueProto(&ret.Nodes[i]); err != nil {
+				return nil, status.Errorf(codes.Internal, err.Error())
+			}
+		}
+		return ret, nil
+	}
+	return nil, ctx.Err()
 }
 
 // FirstRange implements the kvcoord.RangeDescriptorDB interface.
