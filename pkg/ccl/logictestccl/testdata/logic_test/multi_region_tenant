@@ -1,0 +1,5 @@
+# LogicTest: multiregion-9node-3region-3azs-tenant
+
+query TT
+SHOW REGIONS FROM CLUSTER
+----
