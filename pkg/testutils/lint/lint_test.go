@@ -126,6 +126,9 @@ func vetCmd(t *testing.T, dir, name string, args []string, filters []stream.Filt
 // parallelization, and which have reasonable memory consumption
 // should be marked with t.Parallel().
 func TestLint(t *testing.T) {
+	skip.UnderStress(t, "does not provide value")
+	skip.UnderRace(t, "does not provide value")
+
 	crdb, err := build.Import(cockroachDB, "", build.FindOnly)
 	if err != nil {
 		t.Fatal(err)
