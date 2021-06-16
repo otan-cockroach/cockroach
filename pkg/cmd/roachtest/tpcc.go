@@ -51,6 +51,10 @@ type tpccOptions struct {
 	During         func(context.Context) error // for running a function during the test
 	Duration       time.Duration               // if zero, TPCC is not invoked
 	SetupType      tpccSetupType
+	// WorkloadInstances contains a list of instances for
+	// workloads to run against.
+	// If unset, will run one workload on all nodes.
+	WorkloadInstances []workloadInstance
 	// If specified, called to stage+start cockroach. If not
 	// specified, defaults to uploading the default binary to
 	// all nodes, and starting it on all but the last node.
@@ -59,6 +63,12 @@ type tpccOptions struct {
 	// also be doing a rolling-restart into the new binary while the cluster
 	// is running, but that feels like jamming too much into the tpcc setup.
 	Start func(context.Context, *test, Cluster)
+}
+
+type workloadInstance struct {
+	nodes          option.NodeListOption
+	prometheusPort int
+	extraRunArgs   string
 }
 
 // tpccImportCmd generates the command string to load tpcc data for the
@@ -145,10 +155,34 @@ func runTPCC(ctx context.Context, t *test, c Cluster, opts tpccOptions) {
 
 	crdbNodes, workloadNode := setupTPCC(ctx, t, c, opts)
 
+	workloadInstances := opts.WorkloadInstances
+	if len(workloadInstances) == 0 {
+		workloadInstances = append(
+			workloadInstances,
+			workloadInstance{
+				nodes:          crdbNodes,
+				prometheusPort: 2112,
+			},
+		)
+	}
+
+	var pgURLs []string
+	var prometheusListenNodes []prometheusListenNode
+	for _, workloadInstance := range workloadInstances {
+		pgURLs = append(pgURLs, fmt.Sprintf("{pgurl%s}", workloadInstance.nodes.String()))
+		prometheusListenNodes = append(
+			prometheusListenNodes,
+			prometheusListenNode{
+				nodes: workloadNode,
+				port:  workloadInstance.prometheusPort,
+			},
+		)
+	}
+
 	// TODO(otan): make this work locally as well.
 	if !c.isLocal() {
 		t.Status("initializing prometheus")
-		p := initPrometheus(ctx, t, c, workloadNode, workloadNode)
+		p := initPrometheus(ctx, t, c, workloadNode, prometheusListenNodes)
 		defer func() {
 			t.Status("make prometheus snapshot")
 			p.snapshot(ctx, "workload-prometheus-snapshot.tar.gz")
@@ -159,15 +193,25 @@ func runTPCC(ctx context.Context, t *test, c Cluster, opts tpccOptions) {
 
 	t.Status("waiting")
 	m := newMonitor(ctx, c, crdbNodes)
-	m.Go(func(ctx context.Context) error {
-		t.WorkerStatus("running tpcc")
-		cmd := fmt.Sprintf(
-			"./cockroach workload run tpcc --warehouses=%d --histograms="+perfArtifactsDir+"/stats.json "+
-				opts.ExtraRunArgs+" --ramp=%s --duration=%s {pgurl:1-%d}",
-			opts.Warehouses, rampDuration, opts.Duration, c.Spec().NodeCount-1)
-		c.Run(ctx, workloadNode, cmd)
-		return nil
-	})
+	for i := range workloadInstances {
+		i := i
+		m.Go(func(ctx context.Context) error {
+			t.WorkerStatus("running tpcc")
+			cmd := fmt.Sprintf(
+				"./cockroach workload run tpcc --warehouses=%d --histograms="+perfArtifactsDir+"/stats.json "+
+					opts.ExtraRunArgs+" --ramp=%s --duration=%s --prometheus-port=%d --pprofport=%d %s %s",
+				opts.Warehouses,
+				rampDuration,
+				opts.Duration,
+				workloadInstances[i].prometheusPort,
+				33333+i,
+				workloadInstances[i].extraRunArgs,
+				pgURLs[i],
+			)
+			c.Run(ctx, workloadNode, cmd)
+			return nil
+		})
+	}
 	if opts.Chaos != nil {
 		chaos := opts.Chaos()
 		m.Go(chaos.Runner(c, m))
@@ -393,22 +437,64 @@ func registerTPCC(r *testRegistry) {
 				// TODO(#multiregion): setup workload to run specifically for a given partition
 				// on each node of a cluster, instead of one node using a workload on all clusters.
 				runTPCC(ctx, t, c, tpccOptions{
-					Warehouses:     len(regions) * 5,
+					Warehouses:     len(regions) * 3,
 					Duration:       duration,
 					ExtraSetupArgs: partitionArgs,
 					ExtraRunArgs:   `--method=simple --wait=false --tolerate-errors ` + partitionArgs,
 					Chaos: func() Chaos {
+						const nodesPerRegion = 3
+						regionIter := 0
 						return Chaos{
 							Timer: Periodic{
-								Period:   300 * time.Second,
-								DownTime: 300 * time.Second,
+								Period:   180 * time.Second,
+								DownTime: 180 * time.Second,
 							},
-							Target:       func() option.NodeListOption { return c.Node(1 + rand.Intn(c.Spec().NodeCount-1)) },
+							Target: func() option.NodeListOption {
+								// Round-robin taking one region down at a time.
+								regionIdx := regionIter % len(regions)
+								// target := c.Node((regionIdx * nodesPerRegion) + 1)
+								target := c.Range((nodesPerRegion*regionIdx)+1, (nodesPerRegion * (regionIdx + 1)))
+								regionIter++
+								return target
+							},
 							Stopper:      time.After(duration),
 							DrainAndQuit: false,
 						}
 					},
 					SetupType: usingInit,
+					WorkloadInstances: []workloadInstance{
+						{
+							nodes:          c.Range(1, 3),
+							prometheusPort: 2113,
+							extraRunArgs:   "--partition-affinity=0",
+						},
+						{
+							nodes:          c.Range(4, 6),
+							prometheusPort: 2114,
+							extraRunArgs:   "--partition-affinity=1",
+						},
+						{
+							nodes:          c.Range(7, 9),
+							prometheusPort: 2115,
+							extraRunArgs:   "--partition-affinity=2",
+						},
+
+						{
+							nodes:          c.Range(1, 3),
+							prometheusPort: 2120,
+							extraRunArgs:   "--partition-affinity=1",
+						},
+						{
+							nodes:          c.Range(4, 6),
+							prometheusPort: 2121,
+							extraRunArgs:   "--partition-affinity=2",
+						},
+						{
+							nodes:          c.Range(7, 9),
+							prometheusPort: 2122,
+							extraRunArgs:   "--partition-affinity=0",
+						},
+					},
 				})
 			},
 		})
