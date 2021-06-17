@@ -48,6 +48,13 @@ type Chaos struct {
 	// DrainAndQuit is used to determine if want to kill the node vs draining it
 	// first and shutting down gracefully.
 	DrainAndQuit bool
+
+	// OnStartup is called when the chaos routine has begun.
+	OnStartup func() error
+	// OnShutdown is called when a shutdown is complete.
+	OnShutdown func(target option.NodeListOption) error
+	// OnRestart is called when a restart is complete.
+	OnRestart func(target option.NodeListOption) error
 }
 
 // Runner returns a closure that runs chaos against the given cluster without
@@ -67,6 +74,11 @@ func (ch *Chaos) Runner(c Cluster, m *monitor) func(context.Context) error {
 			p, _ := ch.Timer.Timing()
 			t.Reset(p)
 		}
+		if ch.OnStartup != nil {
+			if err := ch.OnStartup(); err != nil {
+				return err
+			}
+		}
 		for {
 			select {
 			case <-ch.Stopper:
@@ -80,7 +92,7 @@ func (ch *Chaos) Runner(c Cluster, m *monitor) func(context.Context) error {
 			period, downTime := ch.Timer.Timing()
 
 			target := ch.Target()
-			m.ExpectDeath()
+			m.ExpectDeaths(int32(len(target)))
 
 			if ch.DrainAndQuit {
 				l.Printf("stopping and draining %v\n", target)
@@ -94,6 +106,12 @@ func (ch *Chaos) Runner(c Cluster, m *monitor) func(context.Context) error {
 				}
 			}
 
+			if ch.OnShutdown != nil {
+				if err := ch.OnShutdown(target); err != nil {
+					return err
+				}
+			}
+			l.Printf("nodes killed; awaiting restart\n")
 			select {
 			case <-ch.Stopper:
 				// NB: the roachtest harness checks that at the end of the test,
@@ -121,6 +139,12 @@ func (ch *Chaos) Runner(c Cluster, m *monitor) func(context.Context) error {
 			t.Reset(period)
 			if err := c.StartE(ctx, target, withWorkerAction()); err != nil {
 				return errors.Wrapf(err, "could not restart node %s", target)
+			}
+
+			if ch.OnRestart != nil {
+				if err := ch.OnRestart(target); err != nil {
+					return err
+				}
 			}
 		}
 	}
